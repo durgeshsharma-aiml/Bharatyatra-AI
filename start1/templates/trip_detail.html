@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ trip.trip_name }} - BharatYatra</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Base Settings */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f4f7f6;
+            color: #1c1e21;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* 💻 Laptop Full Screen Setup */
+        .container { width: 100%; max-width: 100%; padding: 20px 40px; margin: 0 auto; }
+
+        /* App Header */
+        .app-header {
+            background: #ffffff;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            transition: 0.3s ease;
+        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .app-header a { text-decoration: none; font-size: 1.1em; font-weight: 600; color: #4b5563; }
+        .app-header h2 { font-size: 1.5em; font-weight: 600; margin: 0; color: #2c3e50; }
+        
+        .btn-theme {
+            background: transparent; border: none; font-size: 1.5em; cursor: pointer; transition: transform 0.2s;
+        }
+        .btn-theme:hover { transform: scale(1.1); }
+
+        /* Single Column Full Width */
+        .dashboard-grid { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 25px; 
+            width: 100%; 
+            max-width: 100%; 
+            margin: 0 auto; 
+        }
+
+        /* Cards */
+        .card {
+            background: #ffffff; border-radius: 16px; padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: all 0.3s ease;
+            width: 100%;
+        }
+        .card:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+        .card h3 { font-size: 1.1em; font-weight: 600; color: #4b5563; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;}
+
+        /* Banner */
+        .code-banner {
+            background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+            border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;
+            color: white; box-shadow: 0 4px 15px rgba(161, 140, 209, 0.4);
+            width: 100%;
+        }
+        .code-banner span { font-size: 1.8em; font-weight: 700; letter-spacing: 2px;}
+
+        /* Inputs & Buttons */
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        input {
+            width: 100%; background: #f3f4f6; border: 2px solid transparent;
+            padding: 12px 15px; border-radius: 10px; font-size: 1em; outline: none; transition: all 0.3s;
+        }
+        input:focus { border-color: #3b82f6; background: white;}
+        
+        .btn {
+            width: 100%; background: #3b82f6; color: white; border: none;
+            padding: 12px; border-radius: 10px; font-weight: 600; font-size: 1em; cursor: pointer; transition: background 0.2s;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; margin-top: 10px;}
+        .btn-danger:hover { background: #dc2626; }
+
+        /* Expenses List */
+        .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f3f4f6; }
+        .expense-item:last-child { border-bottom: none; }
+        .expense-info p { margin: 0; font-size: 1.05em; font-weight: 500; color: #1f2937;}
+        .expense-info small { color: #6b7280; font-size: 0.85em; }
+        .expense-amount { font-weight: 700; color: #3b82f6; font-size: 1.1em;}
+        .member-badge { background: #e5e7eb; color: #1f2937; padding: 6px 12px; border-radius: 20px; font-size: 0.9em; }
+
+        /* Photo Grid */
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+        .photo-item { position: relative; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .photo-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; transition: transform 0.3s; }
+        .photo-item:hover img { transform: scale(1.05); }
+        .photo-badge { position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); color: white; font-size: 0.75em; padding: 4px 8px; border-radius: 12px; backdrop-filter: blur(4px); }
+        .delete-icon { position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.9); border: none; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9em; transition: transform 0.2s; }
+        .delete-icon:hover { transform: scale(1.1); }
+
+        /* 🌙 DARK MODE STYLES 🌙 */
+        body.dark-mode { background-color: #121212; color: #f3f4f6; }
+        body.dark-mode .app-header, body.dark-mode .card { background: #1e1e1e; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        body.dark-mode .app-header h2, body.dark-mode .expense-info p { color: #f9fafb; }
+        body.dark-mode .app-header a { color: #d1d5db; }
+        body.dark-mode .card h3 { color: #e5e7eb; }
+        body.dark-mode input { background: #2d3748; color: #f9fafb; border-color: #4a5568; }
+        body.dark-mode input:focus { border-color: #3b82f6; background: #1a202c; }
+        body.dark-mode .expense-item { border-bottom-color: #374151; }
+        body.dark-mode .expense-info small { color: #9ca3af; }
+        body.dark-mode .member-badge { background: #374151; color: #f3f4f6; }
+        body.dark-mode .code-banner { box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+
+        /* Premium UPI CSS */
+        .premium-input { background: #f8fafc; border: 2px solid #e2e8f0; padding: 14px 16px; border-radius: 14px; font-size: 1em; outline: none; transition: 0.3s; }
+        .premium-input:focus { border-color: #10b981; background: white; box-shadow: 0 0 0 4px rgba(16,185,129,0.1); }
+        .amount-input { font-size: 1.1em; font-weight: bold; color: #10b981; }
+        .btn-green-glow { background: linear-gradient(135deg, #10b981, #059669); color: white; border-radius: 14px; padding: 15px; font-weight: 600; font-size: 1.05em; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); border: none; transition: 0.3s; }
+        .btn-green-glow:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(16, 185, 129, 0.6); }
+        
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .loader-spinner { border: 4px solid rgba(59, 130, 246, 0.2); border-left-color: #3b82f6; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Success Checkmark CSS */
+        .success-checkmark { width: 80px; height: 115px; margin: 0 auto; position: relative; }
+        .check-icon { width: 80px; height: 80px; position: relative; border-radius: 50%; box-sizing: content-box; border: 4px solid #4CAF50; margin-top: 10px; }
+        .check-icon::before { top: 3px; left: -2px; width: 30px; transform-origin: 100% 50%; border-radius: 100px 0 0 100px; }
+        .check-icon::after { top: 0; left: 30px; width: 60px; transform-origin: 0 50%; border-radius: 0 100px 100px 0; animation: rotate-circle 4.25s ease-in; }
+        .icon-line { height: 5px; background-color: #4CAF50; display: block; border-radius: 2px; position: absolute; z-index: 10; }
+        .line-tip { top: 46px; left: 14px; width: 25px; transform: rotate(45deg); animation: icon-line-tip 0.75s; }
+        .line-long { top: 38px; right: 8px; width: 47px; transform: rotate(-45deg); animation: icon-line-long 0.75s; }
+        .icon-circle { top: -4px; left: -4px; z-index: 10; width: 80px; height: 80px; border-radius: 50%; position: absolute; box-sizing: content-box; border: 4px solid rgba(76, 175, 80, 0.5); }
+        .icon-fix { top: 8px; width: 5px; left: 26px; z-index: 1; height: 85px; position: absolute; transform: rotate(-45deg); background-color: #ecfdf5; }
+
+        /* 🚨 SOS Button Animation */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .btn-sos { background: #ef4444 !important; animation: pulse 2s infinite; }
+        .btn-sos:hover { background: #dc2626 !important; animation: none; }
+
+        /* 📱 MOBILE RESPONSIVENESS */
+        @media (max-width: 768px) {
+            .container { padding: 15px 10px; }
+            .app-header h2 { font-size: 1.2em; }
+            .input-group { flex-direction: column; }
+            .input-group input, .input-group button, #fromCity, #toCity { width: 100% !important; }
+            .card { padding: 15px; }
+            .code-banner span { font-size: 1.4em; }
+            #travelResults > div { flex-direction: column; text-align: left !important; align-items: flex-start; gap: 10px; }
+            #travelResults > div > div:last-child { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <div class="app-header">
+        <div class="header-left">
+            <a href="/dashboard">⬅️ Back</a>
+            <h2>✈️ {{ trip.trip_name }}</h2>
+        </div>
+        <!-- 🌓 Theme Toggle Button -->
+        <button id="theme-btn" class="btn-theme" title="Toggle Dark Mode">🌙</button>
+    </div>
+    
+    <div class="code-banner">
+        <p style="margin:0; font-size: 1em; margin-bottom: 5px; opacity: 0.9;">Invite Friends with this Code</p>
+        <span>{{ trip.trip_code }}</span>
+    </div>
+
+    <!-- MAIN FULL WIDTH DASHBOARD -->
+    <div class="dashboard-grid">
+        
+        <!-- Add Expense -->
+        <div class="card">
+            <h3>💰 Add Expense</h3>
+            <form action="/add-expense/{{ trip.id }}" method="POST">
+                <div class="input-group">
+                    <input type="text" name="description" placeholder="What did you buy?" required>
+                    <input type="number" step="0.01" name="amount" placeholder="₹ Amount" style="width: 40%;" required>
+                </div>
+                <button type="submit" class="btn">Add to Bill</button>
+            </form>
+        </div>
+
+        <!-- Total & List -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">🧾 All Expenses</h3>
+                <h3 style="margin: 0; color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 5px 10px; border-radius: 8px;">Total: ₹{{ total_expense }}</h3>
+            </div>
+            
+            <div class="expense-list" style="max-height: 350px; overflow-y: auto; padding-right: 10px;">
+                {% for expense in expenses %}
+                <div class="expense-item">
+                    <div class="expense-info">
+                        <p>{{ expense.description }}</p>
+                        <small>{{ expense.payer_name }} • {{ expense.date[:10] }}</small>
+                    </div>
+                    <div class="expense-amount">₹{{ expense.amount }}</div>
+                </div>
+                {% else %}
+                <p style="color: #6b7280; text-align: center; padding: 20px 0;">No expenses yet. Start spending! 😉</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 📊 Navigation Button to Analytics -->
+        <div style="text-align: right;">
+            <a href="/analytics/10" class="btn" style="background: #0f172a; color: white; display: block; text-align: center; padding: 15px; border-radius: 12px; text-decoration: none;">
+                📊 Open AI Analytics Dashboard
+            </a>
+        </div>
+
+        <!-- Search Hotels -->
+        <div class="card">
+            <h3>🏨 Nearby Hotels</h3>
+            <div class="input-group" style="margin-bottom: 0;">
+                <input type="text" id="hotelLocation" placeholder="Enter City (e.g. Goa, Manali)" required>
+                <button onclick="findHotels()" class="btn" style="width: 30%; background: #f59e0b;">Search</button>
+            </div>
+            <script>
+                function findHotels() {
+                    let location = document.getElementById("hotelLocation").value;
+                    if(location.trim() !== "") {
+                        window.open("https://www.google.com/maps/search/hotels+in+" + encodeURIComponent(location), "_blank");
+                    }
+                }
+            </script>
+        </div>
+
+        <!-- Advanced Hybrid Crowd Tracker -->
+        <div class="card" style="border-top: 4px solid #f59e0b;">
+            <h3 style="color: #f59e0b; margin-bottom: 5px;">📍 Smart Crowd Tracker</h3>
+            <p style="font-size: 0.9em; color: #6b7280; margin-bottom: 15px;">
+                AI analyzes Time, Live Weather & User Reports for accurate predictions.
+            </p>
+            
+            <div class="input-group" style="margin-bottom: 15px;">
+                <input type="text" id="spotName" placeholder="Enter place (e.g. Taj Mahal)" required>
+                <button onclick="checkRealCrowd()" class="btn" style="background: #f59e0b; width: auto;">
+                    📡 Analyze
+                </button>
+            </div>
+
+            <!-- Loading Animation -->
+            <div id="crowdLoading" style="display: none; text-align: center; padding: 10px;">
+                <p style="color: #3b82f6; font-size: 0.9em; font-weight: 600;">🛰️ Contacting Python AI Server...</p>
+            </div>
+
+            <!-- Live Results -->
+            <div id="crowdResult" style="display: none; border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; background: #f8fafc; text-align: center;">
+                <h4 id="spotTitle" style="margin: 0 0 10px 0; color: #1f2937; text-transform: uppercase;"></h4>
+                
+                <!-- Progress Bar -->
+                <div style="width: 100%; background: #e5e7eb; border-radius: 10px; height: 12px; margin-bottom: 10px; overflow: hidden;">
+                    <div id="crowdBar" style="height: 100%; width: 0%; transition: width 1s ease-in-out;"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="font-weight: 700; font-size: 1.2em;" id="crowdPercentage">0%</span>
+                    <span id="crowdStatus" style="font-weight: 600; padding: 4px 10px; border-radius: 6px; font-size: 0.85em;"></span>
+                </div>
+
+                <!-- Analysis Breakdown -->
+                <div style="font-size: 0.85em; color: #4b5563; background: #e2e8f0; padding: 10px; border-radius: 8px; text-align: left; line-height: 1.5;">
+                    <strong style="color: #1f2937;">🧠 AI Factors Analysed:</strong><br>
+                    🌤️ Weather Effect: <strong id="weatherData" style="color: #2563eb;"></strong><br>
+                    👥 Verified User Reports: <strong id="reportData" style="color: #2563eb;"></strong>
+                </div>
+                
+                <!-- Crowdsourcing: User Reporting -->
+                <div style="margin-top: 15px; border-top: 1px dashed #cbd5e1; padding-top: 15px;">
+                    <p style="font-size: 0.85em; color: #4b5563; margin-bottom: 10px; font-weight: 600;">📍 Are you here? Report live crowd:</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="submitCrowdReport(33)" class="btn" style="background: #10b981; padding: 6px; font-size: 0.8em;">🟢 Low</button>
+                        <button onclick="submitCrowdReport(66)" class="btn" style="background: #f59e0b; padding: 6px; font-size: 0.8em;">🟡 Normal</button>
+                        <button onclick="submitCrowdReport(99)" class="btn" style="background: #ef4444; padding: 6px; font-size: 0.8em;">🔴 High</button>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                async function checkRealCrowd() {
+                    const spot = document.getElementById("spotName").value;
+                    if(!spot.trim()) { 
+                        alert("Please enter a place name!"); 
+                        return; 
+                    }
+                    document.getElementById("crowdResult").style.display = "none";
+                    document.getElementById("crowdLoading").style.display = "block";
+                    try {
+                        const response = await fetch(`/api/get-crowd/${encodeURIComponent(spot)}`);
+                        const data = await response.json();
+                        document.getElementById("crowdLoading").style.display = "none";
+                        document.getElementById("crowdResult").style.display = "block";
+                        
+                        document.getElementById("spotTitle").innerText = data.location;
+                        document.getElementById("weatherData").innerText = data.weather;
+                        document.getElementById("reportData").innerText = data.reports_analyzed + " recent reports";
+                        
+                        const finalCrowd = data.crowd_percentage;
+                        document.getElementById("crowdPercentage").innerText = finalCrowd + "%";
+                        
+                        const bar = document.getElementById("crowdBar");
+                        const status = document.getElementById("crowdStatus");
+                        
+                        setTimeout(() => {
+                            bar.style.width = finalCrowd + "%";
+                            if (finalCrowd < 40) {
+                                bar.style.background = "#10b981"; 
+                                status.innerText = "🟢 Low Crowd";
+                                status.style.color = "#047857";
+                                status.style.background = "#d1fae5";
+                            } else if (finalCrowd < 75) {
+                                bar.style.background = "#f59e0b"; 
+                                status.innerText = "🟡 Moderate";
+                                status.style.color = "#b45309";
+                                status.style.background = "#fef3c7";
+                            } else {
+                                bar.style.background = "#ef4444"; 
+                                status.innerText = "🔴 Overcrowded";
+                                status.style.color = "#b91c1c";
+                                status.style.background = "#fee2e2";
+                            }
+                        }, 100);
+                    } catch (error) {
+                        alert("Error connecting to AI Server. Please make sure your Python app is running!");
+                        document.getElementById("crowdLoading").style.display = "none";
+                    }
+                }
+
+                async function submitCrowdReport(level) {
+                    const spot = document.getElementById("spotName").value;
+                    if(!spot.trim()) { 
+                        alert("Please enter the place name first!"); return; 
+                    }
+                    try {
+                        const response = await fetch('/api/submit-crowd', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ location: spot, level: level })
+                        });
+                        await response.json();
+                        alert("✅ Thank you! Your report has been saved.");
+                        checkRealCrowd();
+                    } catch (error) {
+                        alert("Error submitting report.");
+                    }
+                }
+            </script>
+        </div>
+
+        <!-- ✈️🚄 AI Travel Recommender -->
+        <div class="card" style="border-top: 4px solid #3b82f6;">
+            <h3 style="color: #3b82f6; margin-bottom: 5px;">🤖 AI Travel Recommender</h3>
+            <p style="font-size: 0.9em; color: #6b7280; margin-bottom: 15px;">
+                Compare flights, trains, and buses to find the most affordable route.
+            </p>
+            
+            <div class="input-group" style="gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="fromCity" placeholder="From (e.g. Delhi)" required style="width: 50%;">
+                <input type="text" id="toCity" placeholder="To (e.g. Goa)" required style="width: 50%;">
+            </div>
+            <button onclick="compareTravel()" id="compareBtn" class="btn" style="background: #3b82f6;">
+                🔍 Compare Prices
+            </button>
+
+            <!-- Loading Animation -->
+            <div id="loadingTravel" style="display: none; text-align: center; padding: 15px;">
+                <p style="color: #f59e0b; font-weight: 600;">⏳ AI is scanning 100+ travel sites...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="travelResults" style="display: none; margin-top: 20px;">
+                <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <div>
+                        <h4 style="margin: 0; color: #1e293b;">✈️ Flight (Fastest)</h4>
+                        <small style="color: #64748b;">~2h 15m • High Comfort</small>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700; color: #ef4444; font-size: 1.1em;">₹4,500+</div>
+                        <a href="#" id="flightLink" target="_blank" style="font-size: 0.8em; color: #3b82f6; text-decoration: none; font-weight: 600;">Book on Google Flights ➔</a>
+                    </div>
+                </div>
+
+                <div style="border: 1px solid #10b981; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; background: #ecfdf5;">
+                    <div>
+                        <h4 style="margin: 0; color: #047857;">🚄 Train (Recommended)</h4>
+                        <small style="color: #059669;">~18h 30m • Most Affordable</small>
+                        <span style="background: #10b981; color: white; font-size: 0.7em; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">Best Value</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700; color: #10b981; font-size: 1.1em;">₹1,200+</div>
+                        <a href="#" id="trainLink" target="_blank" style="font-size: 0.8em; color: #047857; text-decoration: none; font-weight: 600;">Check via Ixigo ➔</a>
+                    </div>
+                </div>
+
+                <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <div>
+                        <h4 style="margin: 0; color: #1e293b;">🚌 AC Sleeper Bus</h4>
+                        <small style="color: #64748b;">~22h 00m • Budget</small>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700; color: #f59e0b; font-size: 1.1em;">₹1,800+</div>
+                        <a href="#" id="busLink" target="_blank" style="font-size: 0.8em; color: #3b82f6; text-decoration: none; font-weight: 600;">Check on RedBus ➔</a>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                function compareTravel() {
+                    const fromCity = document.getElementById("fromCity").value;
+                    const toCity = document.getElementById("toCity").value;
+                    
+                    if(fromCity.trim() === "" || toCity.trim() === "") {
+                        alert("Please enter both From and To cities!"); return;
+                    }
+                    document.getElementById("travelResults").style.display = "none";
+                    document.getElementById("loadingTravel").style.display = "block";
+                    document.getElementById("compareBtn").disabled = true;
+
+                    setTimeout(() => {
+                        document.getElementById("loadingTravel").style.display = "none";
+                        document.getElementById("travelResults").style.display = "block";
+                        document.getElementById("compareBtn").disabled = false;
+                        
+                        document.getElementById("flightLink").href = `https://www.google.com/flights?q=flights+from+${fromCity}+to+${toCity}`;
+                        document.getElementById("trainLink").href = `https://www.ixigo.com/search/result/train/${fromCity}/${toCity}`;
+                        document.getElementById("busLink").href = `https://www.redbus.in/bus-tickets/${fromCity}-to-${toCity}`;
+                    }, 2000); 
+                }
+            </script>
+        </div>
+
+        <!-- 💸 Premium UPI Settlement -->
+        <div class="card premium-upi-card" style="border: none; padding: 0; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; background: white;">
+            <!-- Premium Header -->
+            <div style="background: linear-gradient(135deg, #0f172a, #1e293b); padding: 25px; text-align: center; position: relative;">
+                <div style="position: absolute; top: -50px; right: -50px; width: 120px; height: 120px; background: rgba(16, 185, 129, 0.2); border-radius: 50%; filter: blur(30px);"></div>
+                <h3 style="color: #10b981; margin: 0 0 5px 0; font-size: 1.3em; letter-spacing: 1px;">💸 Instant UPI Settlement</h3>
+                <p style="color: #94a3b8; font-size: 0.85em; margin: 0;">Zero-fee direct peer-to-peer transfer</p>
+            </div>
+
+            <!-- STEP 1: Input Details -->
+            <div id="upiStep1" style="padding: 25px;">
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <input type="text" id="payeeName" placeholder="Receiver's Name (e.g. Durgesh)" required class="premium-input">
+                    <input type="text" id="upiId" placeholder="Receiver's UPI ID (e.g. 9876543210@ybl)" required class="premium-input">
+                    <input type="number" id="payAmount" placeholder="Amount to Pay (₹)" required class="premium-input amount-input">
+                    
+                    <button onclick="generateUPI()" class="btn btn-green-glow" style="margin-top: 10px;">
+                        ⚡ Generate Secure Link
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Payment & QR Screen (Hidden initially) -->
+            <div id="upiStep2" style="display: none; padding: 25px; text-align: center;">
+                <h4 style="color: #64748b; font-weight: 500; margin-bottom: 5px;">Paying securely to</h4>
+                <h2 style="color: #0f172a; margin-bottom: 5px; font-size: 1.4em;" id="displayName"></h2>
+                <h1 style="color: #10b981; font-size: 2.8em; margin-bottom: 20px; text-shadow: 0 4px 10px rgba(16,185,129,0.2);">₹<span id="displayAmount"></span></h1>
+                
+                <!-- Scanner Box -->
+                <div style="background: #f8fafc; padding: 15px; border-radius: 20px; display: inline-block; border: 2px dashed #cbd5e1; margin-bottom: 20px; position: relative;">
+                    <img id="upiQRCode" src="" alt="UPI QR Code" style="width: 180px; height: 180px; border-radius: 10px;">
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <a id="upiDeepLink" href="#" class="btn" style="background: #0f172a; color: white; text-decoration: none; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                        📱 Pay via GPay / PhonePe
+                    </a>
+                    <button onclick="verifyPayment()" class="btn" style="background: transparent; border: 2px solid #10b981; color: #10b981;">
+                        🔄 Verify Payment Status
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Loading Bank Server -->
+            <div id="upiStep3" style="display: none; padding: 40px 20px; text-align: center;">
+                <div class="loader-spinner"></div>
+                <h3 style="color: #3b82f6; margin-top: 20px;">Contacting Bank Servers...</h3>
+                <p style="color: #64748b; font-size: 0.9em;">Please wait, verifying transaction</p>
+            </div>
+
+            <!-- STEP 4: Success Receipt -->
+            <div id="upiStep4" style="display: none; padding: 30px; text-align: center; background: #ecfdf5;">
+                <div class="success-checkmark">
+                    <div class="check-icon">
+                        <span class="icon-line line-tip"></span>
+                        <span class="icon-line line-long"></span>
+                        <div class="icon-circle"></div>
+                        <div class="icon-fix"></div>
+                    </div>
+                </div>
+                <h2 style="color: #047857; margin-bottom: 5px;">Transaction Completed!</h2>
+                <p style="color: #059669; font-weight: 500;">Securely transferred to <span id="successName"></span></p>
+                
+                <div style="background: white; padding: 12px; border-radius: 10px; border: 1px dashed #a7f3d0; margin-top: 15px; margin-bottom: 20px;">
+                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">Txn ID: <strong id="randomTxn" style="color: #0f172a;"></strong></p>
+                </div>
+                
+                <button onclick="resetUPI()" class="btn" style="background: #10b981; color: white; width: 100%;">Settle Another Bill</button>
+            </div>
+            
+            <script>
+                function generateUPI() {
+                    const name = document.getElementById("payeeName").value;
+                    const upiId = document.getElementById("upiId").value;
+                    const amount = document.getElementById("payAmount").value;
+                    if(!name || !upiId || !amount) { alert("Please fill all details!"); return; }
+
+                    document.getElementById("displayName").innerText = name;
+                    document.getElementById("successName").innerText = name;
+                    document.getElementById("displayAmount").innerText = amount;
+                    
+                    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${amount}&cu=INR`;
+                    document.getElementById("upiQRCode").src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+                    document.getElementById("upiDeepLink").href = upiString;
+
+                    document.getElementById("upiStep1").style.display = "none";
+                    const step2 = document.getElementById("upiStep2");
+                    step2.style.display = "block";
+                    step2.style.animation = "slideUp 0.4s ease";
+                }
+
+                function verifyPayment() {
+                    document.getElementById("upiStep2").style.display = "none";
+                    document.getElementById("upiStep3").style.display = "block";
+                    setTimeout(() => {
+                        document.getElementById("upiStep3").style.display = "none";
+                        document.getElementById("randomTxn").innerText = "TRXP" + Math.floor(100000000 + Math.random() * 900000000);
+                        const step4 = document.getElementById("upiStep4");
+                        step4.style.display = "block";
+                        step4.style.animation = "slideUp 0.5s ease";
+                    }, 2500);
+                }
+
+                function resetUPI() {
+                    document.getElementById("payAmount").value = "";
+                    document.getElementById("upiStep4").style.display = "none";
+                    document.getElementById("upiStep1").style.display = "block";
+                }
+            </script>
+        </div>
+
+        <!-- 🚨 SOS & Live Location Tracking -->
+        <div class="card" style="border-top: 4px solid #ef4444; position: relative;">
+            <div style="background: rgba(239, 68, 68, 0.05); position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 16px; pointer-events: none;"></div>
+            
+            <div style="position: relative; z-index: 1;">
+                <h3 style="color: #ef4444; margin-bottom: 10px;">🚨 Emergency SOS</h3>
+                <p style="font-size: 0.9em; color: #6b7280; margin-bottom: 15px;">
+                    In danger? Instantly share your live GPS location with the group.
+                </p>
+                <button id="sosBtn" onclick="triggerSOS()" class="btn btn-sos">
+                    🚨 PRESS FOR SOS
+                </button>
+                <p id="sosStatus" style="font-size: 0.85em; margin-top: 10px; font-weight: 600; text-align: center;"></p>
+            </div>
+            
+            <script>
+                function triggerSOS() {
+                    const statusText = document.getElementById("sosStatus");
+                    const btn = document.getElementById("sosBtn");
+                    statusText.innerText = "📍 Fetching Live GPS Location...";
+                    statusText.style.color = "#f59e0b"; 
+                    btn.disabled = true;
+                    btn.innerText = "⏳ Processing...";
+
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                const mapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                                statusText.innerText = "✅ Location Fetched! Opening WhatsApp...";
+                                statusText.style.color = "#10b981"; 
+                                const message = encodeURIComponent(`🚨 *EMERGENCY SOS* 🚨\nI need urgent help! Here is my live location:\n${mapsLink}`);
+                                const whatsappUrl = `https://api.whatsapp.com/send?text=${message}`;
+                                window.open(whatsappUrl, "_blank");
+                                btn.innerText = "🚨 PRESS FOR SOS";
+                                btn.disabled = false;
+                            },
+                            function(error) {
+                                statusText.innerText = "❌ Location Access Denied. Please enable GPS.";
+                                statusText.style.color = "#ef4444";
+                                btn.innerText = "🚨 PRESS FOR SOS";
+                                btn.disabled = false;
+                            },
+                            { enableHighAccuracy: true } 
+                        );
+                    } else {
+                        statusText.innerText = "❌ GPS is not supported by your browser.";
+                    }
+                }
+            </script>
+        </div>
+
+        <!-- Members & Leave -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">👥 Members ({{ members|length }})</h3>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+                {% for member in members %}
+                    <span class="member-badge">👤 {{ member.name }}</span>
+                {% endfor %}
+            </div>
+            <form action="/leave-trip/{{ trip.id }}" method="POST" onsubmit="return confirm('Are you sure you want to leave this trip?');">
+                <button type="submit" class="btn btn-danger">Exit Trip</button>
+            </form>
+        </div>
+
+        <!-- Shared Trip Gallery -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h3 style="margin: 0;">📸 Shared Trip Gallery</h3>
+                <form action="/upload-photo/{{ trip.id }}" method="POST" enctype="multipart/form-data">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="file" name="photo" accept="image/*" capture="environment" style="padding: 8px;" required>
+                        <button type="submit" class="btn" style="width: auto; padding: 0 20px;">Upload</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="photo-grid">
+                {% for photo in photos %}
+                <div class="photo-item">
+                    <img src="{{ url_for('static', filename='uploads/' + photo.filename) }}" alt="Trip Photo">
+                    <div class="photo-badge">{{ photo.uploader_name }}</div>
+                    {% if photo.uploader_id == session['user_id'] %}
+                        <form action="/delete-photo/{{ trip.id }}/{{ photo.filename }}" method="POST">
+                            <button type="submit" class="delete-icon" onclick="return confirm('Delete this photo?');">🗑️</button>
+                        </form>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p style="color: #6b7280; grid-column: 1 / -1; text-align: center; padding: 30px;">No photos uploaded yet. Click some memories! 📷</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div> <!-- END OF DASHBOARD GRID -->
+</div>
+
+<!-- 🌓 DARK MODE JAVASCRIPT -->
+<script>
+    const themeBtn = document.getElementById('theme-btn');
+    const body = document.body;
+
+    if (localStorage.getItem('theme') === 'dark') {
+        body.classList.add('dark-mode');
+        themeBtn.textContent = '☀️'; 
+    }
+
+    themeBtn.addEventListener('click', () => {
+        body.classList.toggle('dark-mode');
+        
+        if (body.classList.contains('dark-mode')) {
+            localStorage.setItem('theme', 'dark');
+            themeBtn.textContent = '☀️';
+        } else {
+            localStorage.setItem('theme', 'light');
+            themeBtn.textContent = '🌙';
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+﻿tripsync.db
+start1/tripsync.db
+*.lnk
+static/uploads/*
+start1/static/uploads/*

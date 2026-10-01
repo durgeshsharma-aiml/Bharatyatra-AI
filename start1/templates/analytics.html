@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BharatYatra | Live Analytics</title>
+    <!-- ApexCharts Library -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #f1f5f9; color: #1e293b; padding-bottom: 50px; }
+        .navbar { background: #fff; padding: 18px 35px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .navbar h2 { font-size: 1.5em; font-weight: 800; color: #0f172a; }
+        .back-btn { background: #1e293b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 10px; font-weight: 600; }
+        .dashboard-container { padding: 0 35px; max-width: 1400px; margin: 0 auto; }
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px; }
+        .chart-box { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .chart-header { font-size: 1.15em; font-weight: 700; margin-bottom: 20px; color: #1e293b; }
+        @media (max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>📊 BharatYatra Intelligence Center</h2>
+        <!-- Back button dynamically goes back to the specific trip -->
+        <a href="/trip/{{ trip_id }}" class="back-btn">⬅ Back to Trip</a>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Error Message Box -->
+        <div id="errorBox" style="display:none; background: #fee2e2; color: #b91c1c; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-weight: bold;">
+            Error loading real-time data.
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-box">
+                <div class="chart-header">📈 Daily Expense Burn Rate</div>
+                <div id="areaChart"></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-header">🍩 Category Analysis</div>
+                <div id="donutChart"></div>
+            </div>
+        </div>
+
+        <div class="charts-grid" style="grid-template-columns: 1fr;">
+            <div class="chart-box">
+                <div class="chart-header">👤 Member Contribution (Who Paid What)</div>
+                <div id="barChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fontFamily = 'Inter, sans-serif';
+
+        async function loadRealTimeDashboard() {
+            try {
+                // 
+                const response = await fetch('/api/real-analytics-data/{{ trip_id }}');
+                const dbData = await response.json();
+
+                if (dbData.status === "error") {
+                    document.getElementById("errorBox").style.display = "block";
+                    document.getElementById("errorBox").innerText = "Database Error: " + dbData.message;
+                    return;
+                }
+
+                // 1. Area Chart
+                var areaOptions = {
+                    series: [{ name: 'Spend (₹)', data: dbData.daily.totals }],
+                    chart: { height: 350, type: 'area', fontFamily: fontFamily },
+                    colors: ['#3b82f6'],
+                    xaxis: { categories: dbData.daily.dates }
+                };
+                new ApexCharts(document.querySelector("#areaChart"), areaOptions).render();
+
+                // 2. Donut Chart
+                let catLabels = dbData.categories.labels.length > 0 ? dbData.categories.labels : ["No Data"];
+                let catValues = dbData.categories.values.length > 0 ? dbData.categories.values : [0];
+
+                var donutOptions = {
+                    series: catValues,
+                    chart: { height: 350, type: 'donut', fontFamily: fontFamily },
+                    labels: catLabels,
+                    colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'],
+                    plotOptions: { pie: { donut: { size: '65%' } } }
+                };
+                new ApexCharts(document.querySelector("#donutChart"), donutOptions).render();
+
+                // 3. Bar Chart
+                let memberNames = dbData.members.names.length > 0 ? dbData.members.names : ["No Data"];
+                let memberAmounts = dbData.members.amounts.length > 0 ? dbData.members.amounts : [0];
+
+                var barOptions = {
+                    series: [{ name: 'Paid (₹)', data: memberAmounts }],
+                    chart: { height: 280, type: 'bar', fontFamily: fontFamily },
+                    colors: ['#6366f1', '#14b8a6', '#f43f5e'],
+                    plotOptions: { bar: { borderRadius: 8, horizontal: true, distributed: true } },
+                    xaxis: { categories: memberNames },
+                    legend: { show: false }
+                };
+                new ApexCharts(document.querySelector("#barChart"), barOptions).render();
+
+            } catch(e) {
+                console.error("Fetch Error:", e);
+                document.getElementById("errorBox").style.display = "block";
+                document.getElementById("errorBox").innerText = "Error: JavaScript API link me dikkat hai.";
+            }
+        }
+
+        // Initialize dashboard
+        loadRealTimeDashboard();
+    </script>
+</body>
+</html>
