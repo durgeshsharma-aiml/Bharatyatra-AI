@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bharatyatra - Balance & Settlements</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: #f4f6f8;
+            color: #333;
+            padding-bottom: 80px; 
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #5f259f, #431a73);
+            color: white;
+            padding: 20px 20px 30px 20px;
+            border-bottom-left-radius: 25px;
+            border-bottom-right-radius: 25px;
+            box-shadow: 0 4px 15px rgba(95, 37, 159, 0.3);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .container {
+            padding: 0 15px;
+            margin-top: 20px;
+        }
+        
+        .summary-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .summary-card h3 {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+        .summary-card h1 {
+            font-size: 28px;
+            color: #5f259f;
+            font-weight: 700;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #1e293b;
+            padding-left: 5px;
+        }
+        
+        /* Balance Item Card */
+        .balance-card {
+            background: white;
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .balance-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .balance-icon {
+            width: 42px;
+            height: 42px;
+            background: #f3e8ff;
+            color: #5f259f;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+        }
+        .balance-info h4 {
+            font-size: 15px;
+            color: #0f172a;
+            margin-bottom: 3px;
+        }
+        .balance-info p {
+            font-size: 12px;
+            color: #64748b;
+        }
+        .balance-amount {
+            font-weight: 700;
+            font-size: 14px;
+            text-align: right;
+        }
+        .positive { color: #16a34a; } /* Lena hai */
+        .negative { color: #dc2626; } /* Dena hai */
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .nav-item.active {
+            color: #5f259f;
+        }
+        .nav-item i {
+            font-size: 22px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-top">
+            <div style="font-size: 20px; font-weight: 700;">Trip Balances</div>
+            <i class="fa-solid fa-scale-balanced" style="font-size: 18px;"></i>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Total Card -->
+        <div class="summary-card">
+            <h3>Total Amount You Paid</h3>
+            <h1>₹{{ total_overall_paid }}</h1>
+        </div>
+
+        <div class="section-title">Trip-wise Settlement Breakdown</div>
+
+        {% if trip_balances %}
+            {% for item in trip_balances %}
+            <div class="balance-card">
+                <div class="balance-left">
+                    <div class="balance-icon">
+                        <i class="fa-solid fa-suitcase-rolling"></i>
+                    </div>
+                    <div class="balance-info">
+                        <h4>{{ item.trip_name }}</h4>
+                        <p>Total Trip Expense: ₹{{ item.trip_total }}</p>
+                    </div>
+                </div>
+                <div class="balance-amount">
+                    {% if item.balance_amount >= 0 %}
+                        <span class="positive">+₹{{ "%.2f"|format(item.balance_amount) }}</span><br>
+                        <small style="color: #16a34a; font-size: 10px;">Get Back</small>
+                    {% else %}
+                        <span class="negative">-₹{{ "%.2f"|format(item.balance_amount|abs) }}</span><br>
+                        <small style="color: #dc2626; font-size: 10px;">You Owe</small>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <!-- Empty State -->
+            <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+                <i class="fa-solid fa-wallet" style="font-size: 45px; margin-bottom: 15px; color: #cbd5e1;"></i>
+                <h4 style="color: #64748b; margin-bottom: 5px;">No Active Balances!</h4>
+                <p style="font-size: 13px;">Pehle koi trip join karein ya expense add karein.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <a href="/dashboard" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="/history" class="nav-item">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>History</span>
+        </a>
+        <a href="/pay" class="nav-item">
+            <i class="fa-solid fa-indian-rupee-sign" style="background: #5f259f; color: white; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; border-radius: 50%; margin-top: -20px; box-shadow: 0 4px 10px rgba(95,37,159,0.3);"></i>
+            <span>Pay</span>
+        </a>
+        <a href="/balance" class="nav-item active">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <span>Balance</span>
+        </a>
+        <a href="/wealth" class="nav-item">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Wealth</span>
+        </a>
+    </div>
+
+</body>
+</html>

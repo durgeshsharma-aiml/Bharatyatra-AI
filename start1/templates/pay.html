@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bharatyatra - Quick Pay</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: #f4f6f8;
+            color: #333;
+            padding-bottom: 80px; 
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #5f259f, #431a73);
+            color: white;
+            padding: 20px 20px 30px 20px;
+            border-bottom-left-radius: 25px;
+            border-bottom-right-radius: 25px;
+            box-shadow: 0 4px 15px rgba(95, 37, 159, 0.3);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .container {
+            padding: 0 15px;
+            margin-top: 20px;
+        }
+        
+        .pay-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            background: #f8fafc;
+            color: #0f172a;
+            transition: all 0.3s;
+        }
+        .form-control:focus {
+            border-color: #5f259f;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(95,37,159,0.1);
+        }
+        
+        .btn-pay {
+            width: 100%;
+            background: linear-gradient(135deg, #5f259f, #431a73);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(95,37,159,0.3);
+            transition: transform 0.2s;
+        }
+        .btn-pay:active {
+            transform: scale(0.98);
+        }
+
+        .qr-section {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .qr-box {
+            width: 160px;
+            height: 160px;
+            background: #f3e8ff;
+            margin: 0 auto 15px auto;
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #e2e8f0;
+            padding: 10px;
+        }
+        .qr-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .nav-item.active {
+            color: #5f259f;
+        }
+        .nav-item i {
+            font-size: 22px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-top">
+            <div style="font-size: 20px; font-weight: 700;">Quick Transfer & Pay</div>
+            <i class="fa-solid fa-qrcode" style="font-size: 18px;"></i>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="background: {% if category == 'success' %}#dcfce7{% else %}#fee2e2{% endif %}; color: {% if category == 'success' %}#16a34a{% else %}#dc2626{% endif %}; padding: 12px; border-radius: 12px; margin-bottom: 15px; font-size: 13px; text-align: center; font-weight: 600;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Dynamic QR Generator Section -->
+        <div class="qr-section">
+            <div class="qr-box">
+                <!-- Real-time QR code image generated via JS -->
+                <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=bharatyatra@upi&pn=Bharatyatra" alt="UPI QR Code">
+            </div>
+            <h4 style="font-size: 15px; color: #1e293b; margin-bottom: 5px;" id="qrTitle">Scan to Pay</h4>
+            <p style="font-size: 12px; color: #64748b;" id="qrSubtitle">Enter UPI ID & Amount below to generate live QR.</p>
+        </div>
+
+        <div class="pay-card">
+            <h3 style="font-size: 15px; color: #1e293b; margin-bottom: 15px;"><i class="fa-solid fa-paper-plane" style="color: #5f259f; margin-right: 8px;"></i> Send Money / Settle</h3>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label>Recipient UPI ID / Phone</label>
+                    <input type="text" id="upiInput" name="upi_id" class="form-control" placeholder="e.g. username@okhdfcbank" required oninput="updateQRCode()">
+                </div>
+
+                <div class="form-group">
+                    <label>Amount (₹)</label>
+                    <input type="number" id="amountInput" step="any" name="amount" class="form-control" placeholder="Enter amount" required oninput="updateQRCode()">
+                </div>
+
+                <div class="form-group">
+                    <label>Add a Note (Optional)</label>
+                    <input type="text" name="note" class="form-control" placeholder="e.g. Dinner settlement">
+                </div>
+
+                <button type="submit" class="btn-pay">Pay Securely</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript to Generate Live UPI QR Code -->
+    <script>
+        function updateQRCode() {
+            const upiId = document.getElementById('upiInput').value.trim();
+            const amount = document.getElementById('amountInput').value.trim();
+            const qrImage = document.getElementById('qrImage');
+            const qrTitle = document.getElementById('qrTitle');
+            const qrSubtitle = document.getElementById('qrSubtitle');
+
+            if (upiId !== '') {
+                // Standard UPI URI format: upi://pay?pa=UPI_ID&am=AMOUNT&cu=INR
+                let upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Bharatyatra`;
+                if (amount !== '' && !isNaN(amount)) {
+                    upiString += `&am=${amount}&cu=INR`;
+                }
+
+                // API call to generate QR image
+                qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}`;
+                qrTitle.innerText = `Pay to ${upiId}`;
+                qrSubtitle.innerText = amount ? `Amount: ₹${amount}` : `Scan with any UPI App`;
+            } else {
+                qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=bharatyatra@upi&pn=Bharatyatra`;
+                qrTitle.innerText = "Scan to Pay";
+                qrSubtitle.innerText = "Enter UPI ID & Amount below to generate live QR.";
+            }
+        }
+    </script>
+
+    <div class="bottom-nav">
+        <a href="/dashboard" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="/history" class="nav-item">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>History</span>
+        </a>
+        <a href="/pay" class="nav-item active">
+            <i class="fa-solid fa-indian-rupee-sign" style="background: #5f259f; color: white; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; border-radius: 50%; margin-top: -20px; box-shadow: 0 4px 10px rgba(95,37,159,0.3);"></i>
+            <span>Pay</span>
+        </a>
+        <a href="/balance" class="nav-item">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <span>Balance</span>
+        </a>
+        <a href="/wealth" class="nav-item">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Wealth</span>
+        </a>
+    </div>
+
+</body>
+</html>

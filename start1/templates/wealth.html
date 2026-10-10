@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bharatyatra - Wealth & Analytics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: #f4f6f8;
+            color: #333;
+            padding-bottom: 80px; 
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #5f259f, #431a73);
+            color: white;
+            padding: 20px 20px 30px 20px;
+            border-bottom-left-radius: 25px;
+            border-bottom-right-radius: 25px;
+            box-shadow: 0 4px 15px rgba(95, 37, 159, 0.3);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .container {
+            padding: 0 15px;
+            margin-top: 20px;
+        }
+        
+        .wealth-hero {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff, #fcfaff);
+            border: 1px solid #f3e8ff;
+        }
+        .wealth-hero h3 {
+            font-size: 13px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .wealth-hero h1 {
+            font-size: 32px;
+            color: #5f259f;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            background: #f3e8ff;
+            color: #5f259f;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+        }
+        .stat-info h4 {
+            font-size: 16px;
+            color: #0f172a;
+            font-weight: 700;
+        }
+        .stat-info p {
+            font-size: 11px;
+            color: #64748b;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #1e293b;
+            padding-left: 5px;
+        }
+        
+        .activity-card {
+            background: white;
+            border-radius: 14px;
+            padding: 14px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .activity-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .activity-dot {
+            width: 10px;
+            height: 10px;
+            background: #5f259f;
+            border-radius: 50%;
+        }
+        .activity-info h5 {
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+        .activity-info p {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .activity-amount {
+            font-weight: 700;
+            font-size: 14px;
+            color: #5f259f;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .nav-item.active {
+            color: #5f259f;
+        }
+        .nav-item i {
+            font-size: 22px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-top">
+            <div style="font-size: 20px; font-weight: 700;">Wealth Overview</div>
+            <i class="fa-solid fa-chart-line" style="font-size: 18px;"></i>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="wealth-hero">
+            <h3>Total Lifetime Spend</h3>
+            <h1>₹{{ overall_spent }}</h1>
+            <p style="font-size: 12px; color: #64748b;">Aapne saari trips mila kar itna kharch kiya hai.</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-suitcase"></i></div>
+                <div class="stat-info">
+                    <h4>{{ total_trips_joined }}</h4>
+                    <p>Trips Joined</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #eef2ff; color: #4f46e5;"><i class="fa-solid fa-receipt"></i></div>
+                <div class="stat-info">
+                    <h4>{{ total_payments }}</h4>
+                    <p>Settlements</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">Recent Wealth Activity</div>
+
+        {% if recent_activity %}
+            {% for item in recent_activity %}
+            <div class="activity-card">
+                <div class="activity-left">
+                    <div class="activity-dot"></div>
+                    <div class="activity-info">
+                        <h5>{{ item.title }}</h5>
+                        <p>{{ item.description }} • {{ item.timestamp }}</p>
+                    </div>
+                </div>
+                <div class="activity-amount">
+                    {{ item.amount }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align: center; padding: 30px 20px; color: #94a3b8;">
+                <i class="fa-solid fa-chart-pie" style="font-size: 40px; margin-bottom: 10px; color: #cbd5e1;"></i>
+                <p style="font-size: 13px;">Abhi koi financial activity record nahi hai.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="bottom-nav">
+        <a href="/dashboard" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="/history" class="nav-item">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>History</span>
+        </a>
+        <a href="/pay" class="nav-item">
+            <i class="fa-solid fa-indian-rupee-sign" style="background: #5f259f; color: white; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; border-radius: 50%; margin-top: -20px; box-shadow: 0 4px 10px rgba(95,37,159,0.3);"></i>
+            <span>Pay</span>
+        </a>
+        <a href="/balance" class="nav-item">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <span>Balance</span>
+        </a>
+        <a href="/wealth" class="nav-item active">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Wealth</span>
+        </a>
+    </div>
+
+</body>
+</html>
