@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ trip.name }} • Smart Trip Dashboard</title>
+    <title>{{ trip.name }} • BharatYatra AI</title>
     <style>
         :root {
             --bg-color: #f8fafc;
@@ -322,6 +322,66 @@
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
+
+    <style id="bharatyatra-premium-theme">
+      :root {
+        --bg-color: #f4f7fb; --card-bg: rgba(255,255,255,.94); --text-color: #172033;
+        --text-muted: #718096; --border-color: #e5eaf2; --input-bg: #f7f9fc;
+        --primary: #4f46e5; --primary-gradient: linear-gradient(135deg,#635bff 0%,#3b82f6 52%,#0ea5e9 100%);
+        --shadow: 0 18px 50px rgba(31,41,55,.07);
+      }
+      body { padding: 24px clamp(12px,2.6vw,36px) 48px; background: radial-gradient(ellipse at 10% 0%,rgba(99,91,255,.10),transparent 32%), radial-gradient(ellipse at 95% 12%,rgba(14,165,233,.10),transparent 27%),var(--bg-color); }
+      body.dark-mode { --bg-color:#0b1020; --card-bg:rgba(17,24,43,.94); --text-color:#f1f5f9; --text-muted:#9aa8bf; --border-color:#26314a; --input-bg:#111a2d; --primary:#8b9bff; --primary-gradient:linear-gradient(135deg,#635bff,#2563eb 60%,#0891b2); --shadow:0 20px 50px rgba(0,0,0,.25); }
+      * { transition: background-color .22s ease,color .22s ease,border-color .22s ease,box-shadow .22s ease,transform .22s ease; }
+      .container { max-width: 1440px; }
+      .header { position:relative; overflow:hidden; padding:24px clamp(18px,3vw,34px); border-radius:24px; border-color:var(--border-color); background:var(--card-bg); box-shadow:var(--shadow); margin-bottom:22px; }
+      .header:before { content:""; position:absolute; width:230px;height:230px;right:-85px;top:-135px;border-radius:50%;background:linear-gradient(135deg,rgba(99,91,255,.16),rgba(14,165,233,.04));pointer-events:none; }
+      .trip-title-area h2 { font-size:clamp(1.35rem,2.5vw,2rem); letter-spacing:-.8px; }
+      .trip-title-area h2:before { content:"B"; display:inline-grid;place-items:center;width:38px;height:38px;border-radius:13px;background:var(--primary-gradient);color:white;font-size:1rem;box-shadow:0 8px 20px rgba(79,70,229,.24); }
+      .trip-code-pill { background:var(--input-bg);border-color:var(--border-color);padding:8px 12px; }
+      .btn { border-radius:13px; }
+      .dashboard-grid { grid-template-columns:repeat(12,minmax(0,1fr)); gap:20px; align-items:start; }
+      .dashboard-grid > .card { grid-column:span 6; min-width:0; background:var(--card-bg);border:1px solid var(--border-color);border-radius:22px;padding:clamp(18px,2vw,26px);box-shadow:var(--shadow);backdrop-filter:blur(12px); }
+      .dashboard-grid > .card:hover,.expense-card:hover { transform:translateY(-2px);box-shadow:0 22px 45px rgba(31,41,55,.09); }
+      .dashboard-grid > .card h3 { color:var(--text-color); }
+      .expense-card { grid-column:span 6; min-width:0; background:var(--card-bg)!important;color:var(--text-color);border:1px solid var(--border-color)!important;border-radius:22px!important;padding:clamp(18px,2vw,25px)!important;box-shadow:var(--shadow)!important; }
+      .expense-card-header h3,.expense-title,.expense-amount-badge { color:var(--text-color)!important; }
+      .icon-badge { flex-shrink:0; }
+      .custom-input,.custom-select { background:var(--input-bg);color:var(--text-color);border-color:var(--border-color); }
+      .custom-input:focus,.custom-select:focus { border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,91,255,.13); }
+      .expense-item-card { background:var(--input-bg)!important;border-color:var(--border-color)!important;gap:12px; }
+      .expense-item-card:hover { background:var(--card-bg)!important; }
+      .expense-amount-badge { background:var(--card-bg)!important;border-color:var(--border-color)!important;white-space:nowrap; }
+      .expense-meta { color:var(--text-muted)!important;line-height:1.6; }
+      input:not([type=file]),select,textarea { max-width:100%; }
+      input[type=text],input[type=number],input[type=email],input[type=password],select,textarea { border-radius:12px; }
+      .member-badge { display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:999px;background:var(--input-bg);border:1px solid var(--border-color);color:var(--text-color);font-size:.82rem;font-weight:650; }
+      .photo-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px; }
+      .photo-item { min-width:0;border-radius:16px;overflow:hidden;border:1px solid var(--border-color);background:var(--input-bg); }
+      .photo-item img { width:100%;height:170px;object-fit:cover;display:block; }
+      #toast { z-index:1000;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:14px 20px;backdrop-filter:blur(14px); }
+      .trip-overview { display:grid;grid-template-columns:minmax(0,1.55fr) repeat(3,minmax(0,1fr));gap:16px;margin-bottom:22px; }
+      .overview-hero { position:relative;overflow:hidden;min-height:175px;padding:25px 28px;border-radius:24px;color:white;background:linear-gradient(120deg,#312e81 0%,#4f46e5 45%,#0284c7 100%);box-shadow:0 20px 45px rgba(79,70,229,.20); }
+      .overview-hero:after { content:"✈";position:absolute;right:18px;bottom:-34px;font-size:150px;opacity:.10;transform:rotate(-13deg); }
+      .eyebrow { text-transform:uppercase;letter-spacing:1.6px;font-size:.72rem;font-weight:800;opacity:.78;margin-bottom:12px; }
+      .overview-hero h1 { font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.12;letter-spacing:-1px;margin-bottom:10px;max-width:75%; }
+      .overview-hero p { font-size:.92rem;opacity:.84;max-width:75%;line-height:1.55; }
+      .overview-stat { display:flex;flex-direction:column;justify-content:space-between;gap:16px;padding:21px;border-radius:22px;background:var(--card-bg);border:1px solid var(--border-color);box-shadow:var(--shadow);min-width:0; }
+      .stat-top { display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--text-muted);font-size:.8rem;font-weight:700; }
+      .stat-icon { display:grid;place-items:center;width:38px;height:38px;border-radius:13px;background:rgba(99,91,255,.12);font-size:1.1rem; }
+      .stat-value { color:var(--text-color);font-size:clamp(1.25rem,2vw,1.8rem);font-weight:850;letter-spacing:-.8px;overflow-wrap:anywhere; }
+      .stat-foot { color:var(--text-muted);font-size:.76rem;line-height:1.4; }
+      .expense-tools { display:flex;gap:10px;margin-bottom:13px; }
+      .expense-tools input { width:100%;padding:11px 13px;border:1px solid var(--border-color);background:var(--input-bg);color:var(--text-color);outline:none; }
+      .section-kicker { color:var(--text-muted);font-size:.8rem;margin-top:-10px;margin-bottom:18px;line-height:1.5; }
+      .app-footer { text-align:center;color:var(--text-muted);font-size:.78rem;padding:28px 10px 0; }
+      .btn:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid rgba(99,91,255,.35);outline-offset:2px; }
+      @media(max-width:1050px) { .trip-overview { grid-template-columns:repeat(3,minmax(0,1fr)); } .overview-hero { grid-column:1/-1; } }
+      @media(max-width:760px) { body{padding:12px 10px 30px}.header{padding:18px;border-radius:18px}.dashboard-grid{grid-template-columns:1fr;gap:14px}.dashboard-grid > .card,.expense-card{grid-column:1/-1!important}.trip-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.overview-hero{grid-column:1/-1;padding:22px;min-height:160px}.overview-stat{padding:15px;border-radius:17px}.overview-hero h1,.overview-hero p{max-width:88%}.photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+      @media(max-width:420px) { .trip-overview{grid-template-columns:1fr 1fr}.stat-value{font-size:1.25rem}.trip-code-pill{font-size:.75rem;gap:6px}.header>div:last-child{width:100%;justify-content:space-between}.overview-hero h1{font-size:1.55rem} }
+      @media(prefers-reduced-motion:reduce) { *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition:none!important} }
+    </style>
+
 </head>
 <body>
 
@@ -341,6 +401,30 @@
             <a href="/dashboard" class="btn" style="width: auto; text-decoration: none; background: #64748b; box-shadow: none;">← Dashboard</a>
         </div>
     </div>
+
+    <!-- Trip overview: live values from the existing Flask template context -->
+    <section class="trip-overview" aria-label="Trip overview">
+        <div class="overview-hero">
+            <div class="eyebrow">BharatYatra AI · Trip workspace</div>
+            <h1>Your next story starts here.</h1>
+            <p>Keep your group, spending, travel tools and shared memories together in one smart trip dashboard.</p>
+        </div>
+        <div class="overview-stat">
+            <div class="stat-top"><span>Total spent</span><span class="stat-icon">₹</span></div>
+            <div class="stat-value">₹{{ '%.2f'|format((total_expense or 0)|float) }}</div>
+            <div class="stat-foot">Combined expenses recorded for this trip</div>
+        </div>
+        <div class="overview-stat">
+            <div class="stat-top"><span>Trip members</span><span class="stat-icon">👥</span></div>
+            <div class="stat-value">{{ members|length }}</div>
+            <div class="stat-foot">People in your travel group</div>
+        </div>
+        <div class="overview-stat">
+            <div class="stat-top"><span>Shared memories</span><span class="stat-icon">📸</span></div>
+            <div class="stat-value">{{ photos|length }}</div>
+            <div class="stat-foot">Photos saved to this trip gallery</div>
+        </div>
+    </section>
 
     <!-- Dashboard Grid -->
     <div class="dashboard-grid">
@@ -682,14 +766,20 @@
         </span>
     </div>
 
-    <div style="max-height: 300px; overflow-y: auto; padding-right: 4px;">
+    <div class="expense-tools">
+        <input id="expenseSearch" type="search" placeholder="Search expenses or payer…" aria-label="Search expenses">
+    </div>
+    <div id="expenseList" style="max-height: 340px; overflow-y: auto; padding-right: 4px;">
         {% for expense in expenses %}
-        <div class="expense-item-card">
-            <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="expense-item-card" data-expense-search="{{ (expense.description or '')|lower }} {{ (expense.payer_name or '')|lower }}">
+            <div style="display: flex; align-items: center; gap: 12px; min-width:0;">
                 <div style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></div>
                 <div>
                     <div class="expense-title">{{ expense.description }}</div>
-                    <div class="expense-meta">{{ expense.payer_name }} • {{ expense.date[:10] }}</div>
+                    <div class="expense-meta">
+    {{ expense.payer_name or 'Unknown User' }} •
+    {{ (expense.date or 'Date not available')[:10] }}
+</div>
                 </div>
             </div>
             <div class="expense-amount-badge">
@@ -702,6 +792,7 @@
             <p style="color: #94a3b8; font-size: 13px; font-weight: 500;">No expenses added yet. Start your journey!</p>
         </div>
         {% endfor %}
+        <p id="expenseNoResults" style="display:none;text-align:center;padding:18px;color:var(--text-muted);font-size:.85rem;">No matching expenses found.</p>
     </div>
 </div>
 
@@ -1103,37 +1194,70 @@
     </div>
 </div>
 
+<footer class="app-footer">Made for better journeys · <strong>BharatYatra AI</strong> · Your trip, thoughtfully organized.</footer>
+
 <!-- Toast Popup Container -->
 <div id="toast">📋 Trip Code Copied to Clipboard!</div>
 
 <!-- JAVASCRIPT & THEME SWITCHER -->
 <script>
-    function copyTripCode() {
-        const code = document.getElementById("tripCodeText").innerText;
-        navigator.clipboard.writeText(code).then(() => {
-            const toast = document.getElementById("toast");
-            toast.className = "show";
-            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2500);
-        });
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.setTimeout(() => toast.classList.remove("show"), 2500);
     }
 
-    const themeBtn = document.getElementById('theme-btn');
-    const body = document.body;
-
-    if (localStorage.getItem('theme') === 'dark') {
-        body.classList.add('dark-mode');
-        themeBtn.textContent = '☀️'; 
-    }
-
-    themeBtn.addEventListener('click', () => {
-        body.classList.toggle('dark-mode');
-        if (body.classList.contains('dark-mode')) {
-            localStorage.setItem('theme', 'dark');
-            themeBtn.textContent = '☀️';
-        } else {
-            localStorage.setItem('theme', 'light');
-            themeBtn.textContent = '🌙';
+    async function copyTripCode() {
+        const code = document.getElementById("tripCodeText")?.innerText?.trim() || "";
+        if (!code) return showToast("No trip code available");
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(code);
+            } else {
+                const helper = document.createElement("textarea");
+                helper.value = code; helper.style.position = "fixed"; helper.style.opacity = "0";
+                document.body.appendChild(helper); helper.select();
+                const copied = document.execCommand("copy"); helper.remove();
+                if (!copied) throw new Error("Clipboard unavailable");
+            }
+            showToast("✓ Trip invite code copied");
+        } catch (error) {
+            showToast("Trip code: " + code);
         }
+    }
+
+    const themeBtn = document.getElementById("theme-btn");
+    const body = document.body;
+    function applyTheme(theme) {
+        body.classList.toggle("dark-mode", theme === "dark");
+        if (themeBtn) {
+            themeBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+            themeBtn.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+            themeBtn.title = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+        }
+    }
+    let savedTheme = "light";
+    try { savedTheme = localStorage.getItem("theme") || "light"; } catch (e) {}
+    applyTheme(savedTheme);
+    themeBtn?.addEventListener("click", () => {
+        const next = body.classList.contains("dark-mode") ? "light" : "dark";
+        applyTheme(next);
+        try { localStorage.setItem("theme", next); } catch (e) {}
+    });
+
+    // Client-side expense search; does not modify or delete saved records.
+    const expenseSearch = document.getElementById("expenseSearch");
+    expenseSearch?.addEventListener("input", function () {
+        const query = this.value.trim().toLowerCase();
+        let visible = 0;
+        document.querySelectorAll("#expenseList [data-expense-search]").forEach(item => {
+            const match = item.dataset.expenseSearch.includes(query);
+            item.style.display = match ? "flex" : "none";
+            if (match) visible++;
+        });
+        const emptyState = document.getElementById("expenseNoResults");
+        if (emptyState) emptyState.style.display = visible === 0 ? "block" : "none";
     });
 </script>
 

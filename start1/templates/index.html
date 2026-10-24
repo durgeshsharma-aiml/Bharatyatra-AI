@@ -1,136 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to BharatYatra ✈️</title>
-    <!-- Modern Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #333;
-            overflow: hidden; 
-        }
-
-        
-        .welcome-card {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 50px 40px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            text-align: center;
-            max-width: 450px;
-            width: 90%;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            backdrop-filter: blur(10px); /* Glassmorphism Effect */
-        }
-
-        .welcome-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
-        }
-
-        
-        .logo-icon {
-            font-size: 4.5em;
-            margin-bottom: 10px;
-            animation: float 3s ease-in-out infinite; /* लोगो हल्का-हल्का हवा में तैरेगा */
-        }
-
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-
-        h1 {
-            font-size: 2.5em;
-            font-weight: 800;
-            color: #1f2937;
-            margin-bottom: 10px;
-            letter-spacing: -1px;
-        }
-
-        p {
-            color: #6b7280;
-            font-size: 1.1em;
-            margin-bottom: 35px;
-            line-height: 1.6;
-        }
-
-        /* बटन्स का डिज़ाइन */
-        .btn-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .btn {
-            text-decoration: none;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 1.15em;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        /* Login Button - Primary */
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-        }
-        .btn-primary:hover {
-            background: #2563eb;
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
-            transform: scale(1.02);
-        }
-
-        /* Register Button - Secondary */
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #4b5563;
-            border: 2px solid transparent;
-        }
-        .btn-secondary:hover {
-            background: #e5e7eb;
-            color: #1f2937;
-            transform: scale(1.02);
-        }
-
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111a3a">
+  <meta name="description" content="Plan group trips, share expenses, and keep every travel memory together with BharatYatra AI.">
+  <title>BharatYatra AI | Travel smarter together</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #111a3a;
+      --navy-soft: #1c2a58;
+      --purple: #7457f6;
+      --purple-deep: #5d43dc;
+      --cyan: #70e1e8;
+      --ink: #172039;
+      --muted: #7b849b;
+      --line: rgba(255,255,255,.17);
+      --white: #fff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", sans-serif;
+      color: var(--white);
+      background:
+        radial-gradient(ellipse at 13% 20%, rgba(112,225,232,.15), transparent 32%),
+        radial-gradient(ellipse at 85% 80%, rgba(116,87,246,.23), transparent 35%),
+        linear-gradient(135deg, #101832 0%, #18234b 48%, #30235d 100%);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .18;
+      background-image: radial-gradient(rgba(255,255,255,.55) .7px, transparent .7px);
+      background-size: 23px 23px;
+      mask-image: linear-gradient(to bottom, black, transparent 90%);
+    }
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
+    .page-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+    .navbar {
+      width: min(1180px, calc(100% - 48px)); margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 26px 0;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 46px; height: 46px; display: grid; place-items: center;
+      border-radius: 15px; color: var(--navy); font-size: 21px;
+      background: linear-gradient(135deg, var(--cyan), #c6fbf5);
+      box-shadow: 0 9px 28px rgba(112,225,232,.18);
+    }
+    .brand-title { display: block; font-family: Manrope, sans-serif; font-size: 19px; font-weight: 800; letter-spacing: -.6px; }
+    .brand-title span { color: var(--cyan); }
+    .brand-subtitle { display: block; margin-top: 2px; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,.58); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-link { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.8); padding: 12px 15px; border-radius: 12px; transition: background .2s, color .2s; }
+    .nav-link:hover { background: rgba(255,255,255,.08); color: white; }
+    .nav-cta { color: var(--navy); background: var(--cyan); padding: 12px 18px; border-radius: 12px; font-weight: 800; font-size: 13px; box-shadow: 0 8px 22px rgba(112,225,232,.12); }
+    .nav-cta:hover { background: #a3f3ee; transform: translateY(-1px); }
+    main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; flex: 1; display: grid; grid-template-columns: 1.04fr .96fr; align-items: center; gap: clamp(36px, 7vw, 100px); padding: 42px 0 68px; }
+    .hero { max-width: 650px; }
+    .pill { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px; background: rgba(255,255,255,.055); color: #c9fbf7; font-size: 11px; font-weight: 800; letter-spacing: 1.15px; }
+    .pill i { color: var(--cyan); }
+    h1 { font-family: Manrope, sans-serif; font-size: clamp(43px, 5.3vw, 72px); line-height: 1.04; letter-spacing: -3.6px; margin: 26px 0 22px; font-weight: 800; }
+    h1 .accent { color: var(--cyan); }
+    .hero-copy { max-width: 520px; color: rgba(255,255,255,.7); font-size: clamp(15px, 1.5vw, 17px); line-height: 1.85; margin: 0; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 31px; }
+    .btn { min-height: 54px; padding: 0 21px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: 14px; font-size: 14px; font-weight: 800; transition: transform .2s, box-shadow .2s, background .2s; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { color: var(--navy); background: linear-gradient(120deg, #a7f4ed, var(--cyan)); box-shadow: 0 12px 28px rgba(112,225,232,.17); }
+    .btn-primary:hover { box-shadow: 0 16px 34px rgba(112,225,232,.25); }
+    .btn-secondary { border: 1px solid var(--line); color: #fff; background: rgba(255,255,255,.055); }
+    .btn-secondary:hover { background: rgba(255,255,255,.11); }
+    .hero-points { display: flex; flex-wrap: wrap; gap: 19px; margin-top: 31px; color: rgba(255,255,255,.68); font-size: 12px; }
+    .hero-points span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-points i { color: var(--cyan); }
+    .visual { position: relative; min-height: 510px; display: grid; place-items: center; }
+    .orbit { position: absolute; width: min(100%, 470px); aspect-ratio: 1; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; }
+    .orbit::before, .orbit::after { content: ""; position: absolute; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; inset: 10%; }
+    .orbit::after { inset: 21%; }
+    .travel-window {
+      width: min(100%, 385px); position: relative; z-index: 1;
+      border: 1px solid rgba(255,255,255,.2); border-radius: 27px; padding: 17px;
+      background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,255,255,.065));
+      box-shadow: 0 30px 85px rgba(0,0,0,.25); backdrop-filter: blur(18px);
+      transform: rotate(1.5deg);
+    }
+    .window-top { display: flex; align-items: center; justify-content: space-between; padding: 3px 2px 15px; }
+    .window-label { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: rgba(255,255,255,.8); text-transform: uppercase; }
+    .window-dots { display: flex; gap: 5px; }
+    .window-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.4); }
+    .destination-art {
+      height: 215px; border-radius: 19px; overflow: hidden; position: relative;
+      background:
+        linear-gradient(180deg, rgba(12,20,49,.02), rgba(12,20,49,.7)),
+        url("https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=1000&q=85") center 52% / cover,
+        linear-gradient(135deg, #71c6d7, #5261a8);
+    }
+    .destination-tag { position: absolute; top: 13px; left: 13px; display: inline-flex; gap: 6px; align-items: center; padding: 7px 10px; background: rgba(14,22,50,.6); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; font-size: 10px; font-weight: 700; backdrop-filter: blur(8px); }
+    .destination-name { position: absolute; left: 18px; bottom: 17px; }
+    .destination-name small { display: block; color: rgba(255,255,255,.75); font-size: 10px; margin-bottom: 4px; }
+    .destination-name strong { font-family: Manrope, sans-serif; font-size: 26px; letter-spacing: -.7px; }
+    .trip-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .summary-item { border: 1px solid rgba(255,255,255,.11); border-radius: 14px; padding: 13px; background: rgba(12,20,49,.22); }
+    .summary-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; color: var(--cyan); background: rgba(112,225,232,.13); margin-bottom: 10px; }
+    .summary-item small { display: block; font-size: 10px; color: rgba(255,255,255,.57); margin-bottom: 4px; }
+    .summary-item strong { font-size: 14px; }
+    .member-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 2px; }
+    .avatars { display: flex; padding-left: 4px; }
+    .avatar { width: 29px; height: 29px; margin-left: -5px; display: grid; place-items: center; border: 2px solid #29325c; border-radius: 50%; font-size: 10px; font-weight: 800; color: #182044; background: #a7f4ed; }
+    .avatar:nth-child(2) { background: #ffd6a5; }
+    .avatar:nth-child(3) { background: #e5c7ff; }
+    .avatar:nth-child(4) { background: #c7dcff; }
+    .member-caption { font-size: 10px; color: rgba(255,255,255,.67); }
+    .floating-badge { position: absolute; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,.2); background: rgba(23,32,68,.84); backdrop-filter: blur(12px); box-shadow: 0 15px 35px rgba(0,0,0,.2); animation: bob 5s ease-in-out infinite; }
+    .floating-badge i { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 11px; background: rgba(112,225,232,.15); color: var(--cyan); }
+    .floating-badge strong { display: block; font-size: 12px; margin-bottom: 3px; }
+    .floating-badge small { color: rgba(255,255,255,.6); font-size: 10px; }
+    .badge-expense { top: 16%; right: -3%; }
+    .badge-memory { bottom: 12%; left: -2%; animation-delay: -2.5s; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+    footer { width: min(1180px, calc(100% - 48px)); margin: 0 auto; border-top: 1px solid rgba(255,255,255,.11); padding: 20px 0 25px; display: flex; justify-content: space-between; align-items: center; gap: 15px; color: rgba(255,255,255,.47); font-size: 11px; }
+    .footer-links { display: flex; gap: 18px; }
+    .footer-links a:hover { color: var(--cyan); }
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr .85fr; gap: 28px; }
+      h1 { font-size: clamp(40px, 5vw, 58px); letter-spacing: -2.6px; }
+      .visual { min-height: 440px; }
+      .badge-expense { right: -1%; }
+      .badge-memory { left: -1%; }
+    }
+    @media (max-width: 760px) {
+      .navbar, main, footer { width: min(100% - 36px, 560px); }
+      .navbar { padding: 20px 0; }
+      main { display: flex; flex-direction: column; align-items: stretch; gap: 22px; padding: 45px 0 48px; }
+      .hero { text-align: center; }
+      .hero-copy { margin: 0 auto; }
+      .hero-actions, .hero-points { justify-content: center; }
+      h1 { font-size: clamp(43px, 10vw, 62px); letter-spacing: -2.8px; }
+      .visual { min-height: 440px; }
+      .travel-window { max-width: 355px; }
+      .badge-expense { right: 0; top: 8%; }
+      .badge-memory { left: 0; bottom: 7%; }
+      .visual-footer { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 430px) {
+      .navbar, main, footer { width: calc(100% - 30px); }
+      .navbar { padding-top: 17px; }
+      .brand-icon { width: 41px; height: 41px; border-radius: 13px; }
+      .brand-title { font-size: 17px; }
+      .nav-link { display: none; }
+      .nav-cta { padding: 11px 13px; font-size: 12px; }
+      main { padding-top: 37px; }
+      h1 { font-size: 42px; letter-spacing: -2.2px; }
+      .hero-copy { font-size: 14px; }
+      .btn { width: 100%; min-height: 51px; }
+      .hero-actions { flex-direction: column; }
+      .hero-points { gap: 12px; font-size: 11px; }
+      .visual { min-height: 385px; }
+      .travel-window { padding: 12px; border-radius: 22px; }
+      .destination-art { height: 185px; }
+      .destination-name strong { font-size: 23px; }
+      .floating-badge { padding: 9px 10px; gap: 7px; }
+      .floating-badge i { width: 30px; height: 30px; }
+      .badge-expense { right: -2px; top: 3%; }
+      .badge-memory { left: -2px; bottom: 2%; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
 </head>
 <body>
+  <div class="page-shell">
+    <header class="navbar">
+      <a class="brand" href="/" aria-label="BharatYatra AI home">
+        <span class="brand-icon"><i class="fa-solid fa-compass"></i></span>
+        <span>
+          <span class="brand-title">Bharat<span>Yatra</span> AI</span>
+          <span class="brand-subtitle">Travel smarter together</span>
+        </span>
+      </a>
+      <nav class="nav-actions" aria-label="Account navigation">
+        <a href="/login" class="nav-link">Already a member?</a>
+        <a href="/login" class="nav-cta">Sign in <i class="fa-solid fa-arrow-right"></i></a>
+      </nav>
+    </header>
 
-    <div class="welcome-card">
-        <div class="logo-icon">✈️</div>
-        <h1>BharatYatra</h1>
-        <p>Plan your trips, split expenses, and share memories with friends—all in one place.</p>
-        
-        <div class="btn-container">
-            <a href="/login" class="btn btn-primary">
-                <span>🔐</span> Login to Account
-            </a>
-            <a href="/register" class="btn btn-secondary">
-                <span>✨</span> Create New Account
-            </a>
+    <main>
+      <section class="hero">
+        <div class="pill"><i class="fa-solid fa-sparkles"></i> YOUR JOURNEY, REIMAGINED</div>
+        <h1>Make plans.<br>Make memories.<br><span class="accent">Go together.</span></h1>
+        <p class="hero-copy">Plan your next getaway, split group expenses, and keep your travel crew in sync. Your next great story starts with BharatYatra AI.</p>
+        <div class="hero-actions">
+          <a href="/register" class="btn btn-primary">Create your account <i class="fa-solid fa-arrow-right"></i></a>
+          <a href="/login" class="btn btn-secondary"><i class="fa-solid fa-circle-play"></i> I already have an account</a>
         </div>
-    </div>
+        <div class="hero-points">
+          <span><i class="fa-solid fa-check-circle"></i> Group trip planning</span>
+          <span><i class="fa-solid fa-check-circle"></i> Shared expense tracking</span>
+          <span><i class="fa-solid fa-check-circle"></i> Memories in one place</span>
+        </div>
+      </section>
 
+      <section class="visual" aria-label="Illustration of a group trip dashboard">
+        <div class="orbit"></div>
+        <div class="travel-window">
+          <div class="window-top">
+            <span class="window-label"><i class="fa-solid fa-location-dot"></i> Featured journey</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="destination-art">
+            <div class="destination-tag"><i class="fa-solid fa-mountain-sun"></i> TRAVEL TOGETHER</div>
+            <div class="destination-name"><small>YOUR NEXT ESCAPE</small><strong>Find your somewhere.</strong></div>
+          </div>
+          <div class="trip-summary">
+            <div class="summary-item">
+              <span class="summary-icon"><i class="fa-solid fa-wallet"></i></span>
+              <small>Shared expenses</small>
+              <strong>Stay on track</strong>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon"><i class="fa-solid fa-users"></i></span>
+              <small>Your travel crew</small>
+              <strong>All in sync</strong>
+            </div>
+          </div>
+          <div class="member-row">
+            <div class="avatars" aria-label="Travel group illustration">
+              <span class="avatar">D</span><span class="avatar">A</span><span class="avatar">S</span><span class="avatar">+</span>
+            </div>
+            <span class="member-caption"><i class="fa-solid fa-heart" style="color:#ff9bba"></i> Better trips, together</span>
+          </div>
+        </div>
+        <div class="floating-badge badge-expense">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span><strong>Expenses, simplified</strong><small>Keep your group in balance</small></span>
+        </div>
+        <div class="floating-badge badge-memory">
+          <i class="fa-solid fa-camera-retro"></i>
+          <span><strong>Memories that stay</strong><small>One trip. Shared moments.</small></span>
+        </div>
+      </section>
+    </main>
 
+    <footer>
+      <span>© <span id="year"></span> BharatYatra AI · Made for journeys worth remembering.</span>
+      <div class="footer-links">
+        <a href="/login">Sign in</a>
+        <a href="/register">Create account</a>
+      </div>
+    </footer>
+  </div>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>

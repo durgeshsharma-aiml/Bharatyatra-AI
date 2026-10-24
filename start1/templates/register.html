@@ -1,151 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - BharatYatra</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1f2937;
-            padding: 20px;
-        }
-
-        .register-card {
-            background: #ffffff;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 450px;
-        }
-
-        .register-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .register-header h2 {
-            font-size: 1.8em;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: #111827;
-        }
-
-        .register-header p {
-            color: #6b7280;
-            font-size: 0.95em;
-        }
-
-        .input-group {
-            margin-bottom: 18px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 0.9em;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 1em;
-            outline: none;
-            transition: all 0.3s ease;
-            background: #f9fafb;
-        }
-
-        .input-group input:focus {
-            border-color: #10b981; 
-            background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-        }
-
-        .btn-register {
-            width: 100%;
-            background: #10b981; 
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 1.05em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 15px;
-        }
-
-        .btn-register:hover {
-            background: #059669;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-        }
-
-        .login-link {
-            text-align: center;
-            margin-top: 25px;
-            font-size: 0.9em;
-            color: #6b7280;
-        }
-
-        .login-link a {
-            color: #10b981;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s;
-        }
-
-        .login-link a:hover {
-            color: #047857;
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111a3a">
+  <title>Create Account | BharatYatra AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --navy:#111a3a; --navy2:#1b2855; --purple:#7357f6; --purple-dark:#5b3de5;
+      --cyan:#70e1e8; --ink:#172033; --muted:#778097; --line:#e7eaf2;
+      --surface:#fff; --page:#f4f6fc; --danger:#b42318; --danger-bg:#fff0ee;
+      --success:#067647; --success-bg:#ecfdf3; --shadow:0 28px 80px rgba(20,29,70,.18);
+    }
+    *{box-sizing:border-box}
+    html{min-height:100%;scroll-behavior:smooth}
+    body{margin:0;min-height:100vh;font-family:"DM Sans",sans-serif;color:var(--ink);background:var(--page);display:grid;grid-template-columns:minmax(0,1fr) minmax(430px,.88fr)}
+    a{color:inherit} button,input{font:inherit}
+    .visual-panel{min-height:100vh;position:relative;overflow:hidden;padding:clamp(28px,5vw,64px);display:flex;flex-direction:column;justify-content:space-between;color:#fff;background:linear-gradient(145deg,rgba(12,22,56,.28),rgba(12,22,56,.86)),url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85") center/cover no-repeat}
+    .visual-panel:after{content:"";position:absolute;width:440px;height:440px;border:1px solid rgba(255,255,255,.2);border-radius:50%;right:-180px;top:18%;box-shadow:0 0 0 50px rgba(255,255,255,.035),0 0 0 100px rgba(255,255,255,.025);pointer-events:none}
+    .brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;position:relative;z-index:1;width:max-content}
+    .brand-mark{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--cyan),#9af2d5);color:var(--navy);font-size:21px;box-shadow:0 10px 30px rgba(112,225,232,.25)}
+    .brand-name{font-family:Manrope,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.6px}
+    .brand-name span{color:var(--cyan)}
+    .hero-copy{max-width:600px;position:relative;z-index:1;margin:70px 0}
+    .eyebrow{display:inline-flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);backdrop-filter:blur(12px);border-radius:999px;padding:9px 13px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+    .eyebrow i{color:var(--cyan)}
+    .hero-copy h1{font-family:Manrope,sans-serif;font-size:clamp(38px,5vw,66px);line-height:1.08;letter-spacing:-2.7px;margin:24px 0 18px;font-weight:800}
+    .hero-copy h1 span{color:var(--cyan)}
+    .hero-copy p{max-width:480px;color:rgba(255,255,255,.78);font-size:17px;line-height:1.8;margin:0}
+    .benefits{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+    .benefit{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);font-size:13px;color:rgba(255,255,255,.92);backdrop-filter:blur(10px)}
+    .benefit i{color:var(--cyan)}
+    .visual-footer{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;color:rgba(255,255,255,.7);font-size:12px}
+    .footer-dots{display:flex;gap:5px}.footer-dots span{width:6px;height:6px;background:var(--cyan);border-radius:50%}
+    .form-panel{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:clamp(24px,5vw,64px);background:radial-gradient(circle at top right,rgba(115,87,246,.09),transparent 35%),var(--page)}
+    .form-wrap{width:100%;max-width:470px}
+    .mobile-brand{display:none}
+    .form-heading{margin-bottom:27px}
+    .form-heading .mini-label{font-size:12px;text-transform:uppercase;letter-spacing:1.8px;font-weight:800;color:var(--purple);margin-bottom:11px}
+    .form-heading h2{font-family:Manrope,sans-serif;font-size:clamp(30px,3vw,38px);letter-spacing:-1.4px;line-height:1.18;margin:0 0 11px;color:var(--navy)}
+    .form-heading p{margin:0;color:var(--muted);font-size:14px;line-height:1.7}
+    .progress{display:flex;gap:6px;margin:20px 0 24px}.progress span{height:4px;flex:1;border-radius:9px;background:#e5e8f2}.progress span:first-child,.progress span:nth-child(2){background:linear-gradient(90deg,var(--purple),var(--cyan))}
+    .alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;font-size:13px;margin-bottom:15px;line-height:1.5}
+    .alert.error{background:var(--danger-bg);color:var(--danger);border:1px solid #ffd8d2}.alert.success{background:var(--success-bg);color:var(--success);border:1px solid #b7ebca}
+    .field{margin-bottom:17px}
+    .field-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+    .field label{font-size:13px;font-weight:700;color:#303a51}
+    .field-hint{font-size:11px;color:#9299aa}
+    .input-shell{position:relative}
+    .input-shell>i{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#9299ad;font-size:15px;pointer-events:none}
+    .input-shell input{width:100%;border:1.5px solid var(--line);border-radius:13px;background:#fff;padding:14px 46px 14px 44px;outline:none;color:var(--ink);font-size:14px;transition:border .2s,box-shadow .2s,background .2s}
+    .input-shell input::placeholder{color:#a6adbc}
+    .input-shell input:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(115,87,246,.10);background:#fff}
+    .toggle-password{position:absolute;right:12px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#858da1;padding:7px;cursor:pointer}
+    .toggle-password:hover{color:var(--purple)}
+    .strength{display:flex;align-items:center;gap:9px;margin-top:9px}
+    .strength-bars{display:flex;gap:4px;flex:1}.strength-bars span{height:4px;flex:1;border-radius:5px;background:#e7eaf2;transition:background .2s}
+    .strength-text{font-size:11px;color:#8a92a5;min-width:72px;text-align:right}
+    .terms{display:flex;gap:9px;align-items:flex-start;margin:8px 0 18px;font-size:12px;color:#7c8497;line-height:1.6}
+    .terms input{margin-top:3px;accent-color:var(--purple);flex-shrink:0}
+    .terms a,.login-link a{color:var(--purple);font-weight:700;text-decoration:none}
+    .terms a:hover,.login-link a:hover{text-decoration:underline}
+    .submit-btn{width:100%;border:0;border-radius:13px;padding:15px 18px;color:white;background:linear-gradient(110deg,var(--purple),#8c65fa);font-size:14px;font-weight:800;letter-spacing:.2px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:0 12px 24px rgba(115,87,246,.23);transition:transform .2s,box-shadow .2s}
+    .submit-btn:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(115,87,246,.31)}
+    .submit-btn:active{transform:translateY(0)}
+    .divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:#a0a7b6;font-size:11px}.divider:before,.divider:after{content:"";height:1px;flex:1;background:var(--line)}
+    .login-link{text-align:center;font-size:13px;color:var(--muted);line-height:1.7}
+    .secure-note{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:25px;color:#9aa1b1;font-size:11px}
+    .secure-note i{color:#15a879}
+    @media(max-width:900px){body{grid-template-columns:1fr}.visual-panel{display:none}.form-panel{min-height:100vh;padding:28px 20px}.mobile-brand{display:flex;margin:0 auto 28px}.form-wrap{max-width:460px}.form-heading h2{font-size:32px}}
+    @media(max-width:420px){.form-panel{padding:24px 16px}.input-shell input{padding:13px 42px}.input-shell>i{left:13px}.input-shell input{padding-left:40px}.form-heading h2{font-size:29px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
 </head>
 <body>
-
-    <div class="register-card">
-        <div class="register-header">
-            <h2>Create an Account ✨</h2>
-            <p>Join BharatYatra to plan and share your trips.</p>
-        </div>
-
-        <form action="/register" method="POST">
-            <div class="input-group">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" placeholder="e.g. Durgesh Sharma" required>
-            </div>
-
-            <div class="input-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="e.g. durgesh@example.com" required>
-            </div>
-            
-            <div class="input-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-            </div>
-            
-            <button type="submit" class="btn-register">Sign Up</button>
-        </form>
-
-        <div class="login-link">
-            Already have an account? <a href="/login">Sign in here</a>
-        </div>
+  <section class="visual-panel" aria-label="BharatYatra travel introduction">
+    <a class="brand" href="/">
+      <span class="brand-mark"><i class="fa-solid fa-compass"></i></span>
+      <span class="brand-name">BharatYatra<span> AI</span></span>
+    </a>
+    <div class="hero-copy">
+      <div class="eyebrow"><i class="fa-solid fa-sparkles"></i> Your journey starts here</div>
+      <h1>Make room for<br><span>new stories.</span></h1>
+      <p>Create your free account to plan journeys, coordinate with your travel group, and keep trip details in one place.</p>
+      <div class="benefits">
+        <div class="benefit"><i class="fa-solid fa-map-location-dot"></i> Smarter trip planning</div>
+        <div class="benefit"><i class="fa-solid fa-people-group"></i> Travel together</div>
+        <div class="benefit"><i class="fa-solid fa-wallet"></i> Track shared costs</div>
+      </div>
     </div>
+    <div class="visual-footer"><span>Explore more. Worry less.</span><span class="footer-dots"><span></span><span></span><span></span></span></div>
+  </section>
 
+  <main class="form-panel">
+    <div class="form-wrap">
+      <a class="brand mobile-brand" href="/">
+        <span class="brand-mark"><i class="fa-solid fa-compass"></i></span>
+        <span class="brand-name">BharatYatra<span> AI</span></span>
+      </a>
+
+      <header class="form-heading">
+        <div class="mini-label">Create your account</div>
+        <h2>Your next adventure<br>begins with you.</h2>
+        <p>Sign up in a moment and start planning memorable trips with BharatYatra AI.</p>
+        <div class="progress" aria-hidden="true"><span></span><span></span><span></span></div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert {{ 'error' if category in ['error', 'danger'] else 'success' }}" role="alert">
+              <i class="fa-solid {{ 'fa-circle-exclamation' if category in ['error', 'danger'] else 'fa-circle-check' }}"></i>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form action="/register" method="POST" id="registerForm">
+        <div class="field">
+          <div class="field-top"><label for="name">Full name</label></div>
+          <div class="input-shell">
+            <i class="fa-regular fa-user"></i>
+            <input type="text" id="name" name="name" placeholder="Enter your full name" autocomplete="name" maxlength="100" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-top"><label for="email">Email address</label></div>
+          <div class="input-shell">
+            <i class="fa-regular fa-envelope"></i>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" maxlength="254" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-top"><label for="password">Create password</label><span class="field-hint">Keep it private</span></div>
+          <div class="input-shell">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="password" name="password" placeholder="Create a strong password" autocomplete="new-password" required aria-describedby="strengthText">
+            <button class="toggle-password" type="button" id="togglePassword" aria-label="Show password" aria-pressed="false"><i class="fa-regular fa-eye"></i></button>
+          </div>
+          <div class="strength" aria-live="polite">
+            <div class="strength-bars"><span></span><span></span><span></span><span></span></div>
+            <span class="strength-text" id="strengthText">Password strength</span>
+          </div>
+        </div>
+
+        <label class="terms"><input type="checkbox" id="terms" required><span>I confirm that the information provided is correct and I agree to use BharatYatra responsibly.</span></label>
+
+        <button class="submit-btn" type="submit"><span>Create my account</span><i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+
+      <div class="divider">ALREADY A MEMBER?</div>
+      <div class="login-link">Welcome back? <a href="/login">Sign in to your account</a></div>
+      <div class="secure-note"><i class="fa-solid fa-shield-halved"></i> Your account details stay protected</div>
+    </div>
+  </main>
+
+  <script>
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('togglePassword');
+    const strengthText = document.getElementById('strengthText');
+    const strengthBars = document.querySelectorAll('.strength-bars span');
+
+    toggleButton.addEventListener('click', () => {
+      const show = passwordInput.type === 'password';
+      passwordInput.type = show ? 'text' : 'password';
+      toggleButton.innerHTML = show
+        ? '<i class="fa-regular fa-eye-slash"></i>'
+        : '<i class="fa-regular fa-eye"></i>';
+      toggleButton.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      toggleButton.setAttribute('aria-pressed', String(show));
+    });
+
+    passwordInput.addEventListener('input', () => {
+      const value = passwordInput.value;
+      let score = 0;
+      if (value.length >= 8) score++;
+      if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
+      if (/\d/.test(value)) score++;
+      if (/[^A-Za-z0-9]/.test(value)) score++;
+
+      const labels = ['Password strength', 'Weak password', 'Fair password', 'Good password', 'Strong password'];
+      const colors = ['#e7eaf2', '#ef4444', '#f59e0b', '#0ea5a4', '#16a34a'];
+      strengthBars.forEach((bar, index) => {
+        bar.style.background = index < score ? colors[score] : '#e7eaf2';
+      });
+      strengthText.textContent = value.length === 0 ? labels[0] : labels[score];
+      strengthText.style.color = value.length === 0 ? '#8a92a5' : colors[score];
+    });
+  </script>
 </body>
 </html>
