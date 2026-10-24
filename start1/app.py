@@ -1,249 +1,425 @@
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify
-import sqlite3
-import secrets
-import string
-import os
-import requests
-from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, session, flash, get_flashed_messages
+from __future__ import annotations
 
-app = Flask(__name__)
-app.secret_key = "tripsync_secret_key"
-
-# Single unified database path to prevent mismatch issues
-DATABASE = "C:/Users/Public/tripsync.db"
-UPLOAD_FOLDER = 'static/uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# Global chat session placeholder if used with external AI SDK
-chat_session = None 
-
-
-import os
 import json
+import os
+import secrets
 import sqlite3
+import string
+from datetime import datetime
+from pathlib import Path as FilePath
+
 import requests
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from duckduckgo_search import DDGS
+from flask import (
+    Flask, flash, jsonify, redirect, render_template, request,
+    session, url_for
+)
+from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
+# Optional live web search for the AI agent. The app still runs if this package
+# is not installed; the web_search tool will return a helpful error instead.
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    DDGS = None
+
+
+# ---------------------------------------------------------------------------
+# APP CONFIGURATION
+# ---------------------------------------------------------------------------
 app = Flask(__name__)
-app.secret_key = "bharatyatra_super_secret_agentic_key"
-DATABASE = 'bharatyatra.db'
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-this-development-secret")
 
-# ---------------- DATABASE SETUP ----------------
+BASE_DIR = FilePath(__file__).resolve().parent
+DATABASE = os.environ.get("BHARATYATRA_DATABASE", str(BASE_DIR / "bharatyatra.db"))
+UPLOAD_FOLDER = BASE_DIR / "static" / "uploads"
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+MAX_UPLOAD_SIZE = 8 * 1024 * 1024
+
+app.config["DATABASE"] = DATABASE
+app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_SIZE
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
+chat_session = None
+FX_CACHE: dict[str, float] = {}
+
+
+# ---------------------------------------------------------------------------
+# DATABASE HELPERS AND SAFE, NON-DESTRUCTIVE SCHEMA MIGRATION
+# ---------------------------------------------------------------------------
 def get_db():
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(app.config["DATABASE"], timeout=20)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 20000")
     return conn
 
-def init_db():
+
+def table_columns(conn, table_name):
+    return {row["name"] for row in conn.execute(f"PRAGMA table_info({table_name})")}
+
+
+def ensure_column(conn, table_name, column_name, definition):
+    if column_name not in table_columns(conn, table_name):
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
+
+
+def create_tables():
+    """Create missing tables and add compatible columns without deleting user data."""
     conn = get_db()
-    cursor = conn.cursor()
-    
-    # Users Table
-    cursor.execute("""
+    try:
+        conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL
-        )
-    """)
-    
-    # Trips Table
-    cursor.execute("""
+            name TEXT NOT NULL DEFAULT 'Traveler',
+            email TEXT UNIQUE NOT NULL,
+            password TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS trips (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trip_name TEXT,
+            trip_code TEXT UNIQUE,
+            creator_id INTEGER,
             user_id INTEGER,
-            title TEXT NOT NULL,
-            destination TEXT NOT NULL,
-            budget REAL DEFAULT 0.0
-        )
-    """)
-    
-    # Expenses Table
-    cursor.execute("""
+            title TEXT,
+            destination TEXT,
+            budget REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS trip_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trip_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            UNIQUE(trip_id, user_id),
+            FOREIGN KEY (trip_id) REFERENCES trips(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trip_id INTEGER,
-            payer_id INTEGER,
-            amount REAL NOT NULL,
-            description TEXT NOT NULL
-        )
-    """)
-    
-    # History Table
-    cursor.execute("""
+            trip_id INTEGER NOT NULL,
+            payer_id INTEGER NOT NULL,
+            amount REAL NOT NULL DEFAULT 0,
+            description TEXT NOT NULL DEFAULT 'Expense',
+            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (trip_id) REFERENCES trips(id),
+            FOREIGN KEY (payer_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trip_id INTEGER NOT NULL,
+            uploader_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (trip_id) REFERENCES trips(id),
+            FOREIGN KEY (uploader_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS crowd_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            location_name TEXT NOT NULL,
+            crowd_level INTEGER NOT NULL,
+            report_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            title TEXT,
-            description TEXT,
-            amount TEXT
-        )
-    """)
-    
-    # Itineraries Table
-    cursor.execute("""
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL DEFAULT 'Activity',
+            description TEXT NOT NULL DEFAULT '',
+            amount TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS itineraries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trip_id INTEGER,
-            day_number INTEGER,
-            title TEXT,
-            activities TEXT
+            trip_id INTEGER NOT NULL,
+            day_number INTEGER NOT NULL DEFAULT 1,
+            title TEXT NOT NULL DEFAULT '',
+            activities TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (trip_id) REFERENCES trips(id)
+        );
+        """)
+
+        # Migrate columns in databases created by earlier versions of this app.
+        ensure_column(conn, "users", "name", "TEXT NOT NULL DEFAULT 'Traveler'")
+        ensure_column(conn, "users", "email", "TEXT")
+        ensure_column(conn, "users", "password", "TEXT")
+
+        for col, definition in {
+            "trip_name": "TEXT",
+            "trip_code": "TEXT",
+            "creator_id": "INTEGER",
+            "user_id": "INTEGER",
+            "title": "TEXT",
+            "destination": "TEXT",
+            "budget": "REAL DEFAULT 0",
+            "created_at": "TIMESTAMP",
+        }.items():
+            ensure_column(conn, "trips", col, definition)
+
+        for col, definition in {
+            "trip_id": "INTEGER",
+            "payer_id": "INTEGER",
+            "amount": "REAL NOT NULL DEFAULT 0",
+            "description": "TEXT NOT NULL DEFAULT 'Expense'",
+            "date": "TIMESTAMP",
+        }.items():
+            ensure_column(conn, "expenses", col, definition)
+
+        # Older databases may have an expenses.date column with NULL values,
+        # and migrated columns do not inherit the CREATE TABLE default.
+        conn.execute(
+            "UPDATE expenses SET date = CURRENT_TIMESTAMP WHERE date IS NULL OR TRIM(date) = ''"
         )
-    """)
-    
-    conn.commit()
-    conn.close()
 
-init_db()
+        for col, definition in {
+            "user_id": "INTEGER",
+            "title": "TEXT NOT NULL DEFAULT 'Activity'",
+            "description": "TEXT NOT NULL DEFAULT ''",
+            "amount": "TEXT",
+            "timestamp": "TIMESTAMP",
+        }.items():
+            ensure_column(conn, "history", col, definition)
+
+        # Keep older trip fields readable while adding the current template fields.
+        old_trips = conn.execute("SELECT * FROM trips").fetchall()
+        for trip in old_trips:
+            trip_id = trip["id"]
+            keys = set(trip.keys())
+            trip_name = trip["trip_name"] if "trip_name" in keys else None
+            title = trip["title"] if "title" in keys else None
+            creator_id = trip["creator_id"] if "creator_id" in keys else None
+            user_id = trip["user_id"] if "user_id" in keys else None
+            trip_code = trip["trip_code"] if "trip_code" in keys else None
+            name = trip_name or title or f"Trip {trip_id}"
+            creator = creator_id or user_id
+            if not trip_code:
+                trip_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+                while conn.execute(
+                    "SELECT 1 FROM trips WHERE trip_code = ? AND id != ?",
+                    (trip_code, trip_id)
+                ).fetchone():
+                    trip_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+            conn.execute("""
+                UPDATE trips
+                SET trip_name = COALESCE(NULLIF(trip_name, ''), ?),
+                    title = COALESCE(NULLIF(title, ''), ?),
+                    trip_code = COALESCE(NULLIF(trip_code, ''), ?),
+                    creator_id = COALESCE(creator_id, ?),
+                    user_id = COALESCE(user_id, creator_id, ?),
+                    destination = COALESCE(NULLIF(destination, ''), 'Not specified'),
+                    budget = COALESCE(budget, 0)
+                WHERE id = ?
+            """, (name, name, trip_code, creator, creator, trip_id))
+
+        # Add creators and legacy owners as members. Ignore already-existing rows.
+        conn.execute("""
+            INSERT OR IGNORE INTO trip_members (trip_id, user_id)
+            SELECT id, creator_id FROM trips WHERE creator_id IS NOT NULL
+        """)
+        conn.execute("""
+            INSERT OR IGNORE INTO trip_members (trip_id, user_id)
+            SELECT id, user_id FROM trips WHERE user_id IS NOT NULL
+        """)
+        conn.commit()
+    finally:
+        conn.close()
 
 
-# ---------------- LIVE FX CONVERSION ENGINE ----------------
-FX_CACHE = {}
+def get_trip_for_member(conn, trip_id, user_id):
+    return conn.execute("""
+        SELECT t.*
+        FROM trips t
+        JOIN trip_members tm ON tm.trip_id = t.id
+        WHERE t.id = ? AND tm.user_id = ?
+    """, (trip_id, user_id)).fetchone()
 
+
+def add_history(conn, user_id, title, description, amount=""):
+    conn.execute("""
+        INSERT INTO history (user_id, title, description, amount, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, title, description, str(amount), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+
+# ---------------------------------------------------------------------------
+# CURRENCY CONVERSION
+# ---------------------------------------------------------------------------
 def get_exchange_rate(from_curr, to_curr="INR"):
+    from_curr = (from_curr or "INR").upper().strip()
+    to_curr = (to_curr or "INR").upper().strip()
     if from_curr == to_curr:
         return 1.0
+
     cache_key = f"{from_curr}_{to_curr}"
     if cache_key in FX_CACHE:
         return FX_CACHE[cache_key]
-        
+
     try:
-        url = f"https://open.er-api.com/v6/latest/{from_curr}"
-        res = requests.get(url, timeout=3).json()
-        if res.get("result") == "success":
-            rate = res["rates"].get(to_curr, 1.0)
-            FX_CACHE[cache_key] = rate
-            return rate
-    except Exception as e:
-        print(f"FX API Error: {e}")
-    
+        response = requests.get(
+            f"https://open.er-api.com/v6/latest/{from_curr}", timeout=5
+        )
+        response.raise_for_status()
+        data = response.json()
+        if data.get("result") == "success":
+            rate = data.get("rates", {}).get(to_curr)
+            if rate is not None:
+                FX_CACHE[cache_key] = float(rate)
+                return float(rate)
+    except (requests.RequestException, ValueError, TypeError) as exc:
+        app.logger.warning("FX API unavailable: %s", exc)
+
+    # Approximate fallback values only; these can be outdated.
     fallback = {"USD": 83.5, "EUR": 90.2, "AED": 22.7, "GBP": 105.0, "CAD": 61.5, "INR": 1.0}
-    return round(fallback.get(from_curr, 1.0) / fallback.get(to_curr, 1.0), 4)
+    if from_curr in fallback and to_curr in fallback:
+        return round(fallback[from_curr] / fallback[to_curr], 4)
+    raise ValueError(f"Exchange rate unavailable for {from_curr} to {to_curr}.")
 
 
-# ---------------- AGENT LOCAL TOOLS ----------------
+# ---------------------------------------------------------------------------
+# AI AGENT TOOLS
+# ---------------------------------------------------------------------------
 def tool_add_expense(trip_id, user_id, description, amount, currency="INR"):
-    """Tool 1: Converts foreign amount and inserts expense into DB."""
-    rate = get_exchange_rate(currency, "INR")
-    converted_inr = round(float(amount) * rate, 2)
-    
-    full_desc = f"{description} ({amount} {currency})" if currency != "INR" else description
-    
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            return {"status": "error", "message": "Amount must be greater than zero."}
+        rate = get_exchange_rate(currency, "INR")
+    except (ValueError, TypeError) as exc:
+        return {"status": "error", "message": str(exc)}
+
+    converted = round(amount * rate, 2)
+    description = str(description or "Expense").strip()[:200]
+    full_description = f"{description} ({amount:g} {currency.upper()})" if currency.upper() != "INR" else description
+
     conn = get_db()
-    conn.execute(
-        "INSERT INTO expenses (trip_id, payer_id, amount, description) VALUES (?, ?, ?, ?)",
-        (trip_id, user_id, converted_inr, full_desc)
-    )
-    conn.execute(
-        "INSERT INTO history (user_id, title, description, amount) VALUES (?, ?, ?, ?)",
-        (user_id, "AI Agent Expense Logged", full_desc, f"₹{converted_inr}")
-    )
-    conn.commit()
-    conn.close()
-    
+    try:
+        if not get_trip_for_member(conn, trip_id, user_id):
+            return {"status": "error", "message": "Trip not found or access denied."}
+        conn.execute(
+            "INSERT INTO expenses (trip_id, payer_id, amount, description, date) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+            (trip_id, user_id, converted, full_description)
+        )
+        add_history(conn, user_id, "AI Agent Expense Logged", full_description, f"₹{converted:.2f}")
+        conn.commit()
+    finally:
+        conn.close()
+
     return {
         "status": "success",
-        "added_amount_inr": converted_inr,
-        "message": f"Expense '{description}' of {amount} {currency} (₹{converted_inr}) logged into database."
+        "added_amount_inr": converted,
+        "message": f"Logged {description}: ₹{converted:.2f}."
     }
 
-def tool_get_trip_summary(trip_id):
-    """Tool 2: Calculates total spent and fetches recent transactions."""
+
+def tool_get_trip_summary(trip_id, user_id):
     conn = get_db()
-    total_row = conn.execute("SELECT SUM(amount) as total FROM expenses WHERE trip_id = ?", (trip_id,)).fetchone()
-    recent = conn.execute("SELECT description, amount FROM expenses WHERE trip_id = ? ORDER BY id DESC LIMIT 5", (trip_id,)).fetchall()
-    conn.close()
-    
-    total = total_row["total"] if total_row and total_row["total"] else 0.0
-    items = [f"{r['description']}: ₹{r['amount']}" for r in recent]
-    
-    return {
-        "total_spent_inr": total,
-        "recent_expenses": items
-    }
+    try:
+        if not get_trip_for_member(conn, trip_id, user_id):
+            return {"status": "error", "message": "Trip not found or access denied."}
+        total = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE trip_id = ?",
+            (trip_id,)
+        ).fetchone()["total"]
+        recent = conn.execute(
+            "SELECT description, amount FROM expenses WHERE trip_id = ? ORDER BY id DESC LIMIT 5",
+            (trip_id,)
+        ).fetchall()
+        return {
+            "status": "success",
+            "total_spent_inr": total,
+            "recent_expenses": [f"{r['description']}: ₹{r['amount']:.2f}" for r in recent]
+        }
+    finally:
+        conn.close()
+
 
 def tool_create_roadmap(trip_id, user_id, days_plan):
-    """Tool 3: Saves day-wise itinerary into DB."""
     conn = get_db()
-    conn.execute("DELETE FROM itineraries WHERE trip_id = ?", (trip_id,))
-    
-    for plan in days_plan:
-        conn.execute("""
-            INSERT INTO itineraries (trip_id, day_number, title, activities)
-            VALUES (?, ?, ?, ?)
-        """, (trip_id, plan.get('day', 1), plan.get('title', ''), plan.get('activities', '')))
-    
-    conn.execute("""
-        INSERT INTO history (user_id, title, description, amount)
-        VALUES (?, ?, ?, ?)
-    """, (user_id, "AI Travel Roadmap Created", f"{len(days_plan)}-Day Itinerary Plan Saved", "Roadmap"))
-    
-    conn.commit()
-    conn.close()
-    
-    return {
-        "status": "success",
-        "message": f"Successfully created and saved {len(days_plan)}-day travel roadmap in database!"
-    }
+    try:
+        if not get_trip_for_member(conn, trip_id, user_id):
+            return {"status": "error", "message": "Trip not found or access denied."}
+        if not isinstance(days_plan, list) or len(days_plan) > 30:
+            return {"status": "error", "message": "Provide a list of up to 30 itinerary days."}
+        conn.execute("DELETE FROM itineraries WHERE trip_id = ?", (trip_id,))
+        for plan in days_plan:
+            conn.execute("""
+                INSERT INTO itineraries (trip_id, day_number, title, activities)
+                VALUES (?, ?, ?, ?)
+            """, (
+                trip_id,
+                int(plan.get("day", 1)),
+                str(plan.get("title", ""))[:150],
+                str(plan.get("activities", ""))[:3000]
+            ))
+        add_history(conn, user_id, "AI Travel Roadmap Created", f"{len(days_plan)}-day itinerary saved", "Roadmap")
+        conn.commit()
+        return {"status": "success", "message": f"Saved a {len(days_plan)}-day travel roadmap."}
+    except (ValueError, TypeError) as exc:
+        return {"status": "error", "message": f"Invalid itinerary: {exc}"}
+    finally:
+        conn.close()
+
 
 def tool_web_search(query):
-    """Tool 4: Fetches real-time factual info from the web."""
+    if DDGS is None:
+        return {"status": "error", "message": "Optional package missing. Install duckduckgo-search to enable web search."}
     try:
-        results = DDGS().text(keywords=query, max_results=3)
+        with DDGS() as search:
+            results = list(search.text(keywords=str(query)[:300], max_results=3))
         if not results:
             return {"status": "error", "message": "No live results found."}
-        
-        snippets = [f"Source: {r['title']}\nDetails: {r['body']}" for r in results]
         return {
             "status": "success",
             "query": query,
-            "web_data": "\n---\n".join(snippets)
+            "web_data": "\n---\n".join(
+                f"Source: {r.get('title', '')}\nDetails: {r.get('body', '')}"
+                for r in results
+            )
         }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
 
 
-# ---------------- GEMINI TOOL SCHEMAS ----------------
 GEMINI_TOOLS = [{
     "function_declarations": [
         {
             "name": "add_expense",
-            "description": "Logs an expense into database in any currency with automatic INR conversion.",
+            "description": "Logs an expense in INR after currency conversion.",
             "parameters": {
                 "type": "OBJECT",
                 "properties": {
-                    "description": {"type": "STRING", "description": "Item description e.g. Dinner, Taxi, Flight"},
-                    "amount": {"type": "NUMBER", "description": "Numeric amount spent"},
-                    "currency": {"type": "STRING", "description": "3-letter currency code e.g. USD, EUR, AED, INR"}
+                    "description": {"type": "STRING"},
+                    "amount": {"type": "NUMBER"},
+                    "currency": {"type": "STRING"}
                 },
                 "required": ["description", "amount"]
             }
         },
         {
             "name": "get_trip_summary",
-            "description": "Returns total expense sum and recent log breakdown for active trip.",
+            "description": "Returns the current trip expense total and recent expenses.",
             "parameters": {"type": "OBJECT", "properties": {}}
         },
         {
             "name": "create_travel_roadmap",
-            "description": "Generates and saves full multi-day travel itinerary into database.",
+            "description": "Saves a multi-day travel itinerary for the current trip.",
             "parameters": {
                 "type": "OBJECT",
                 "properties": {
                     "days_plan": {
                         "type": "ARRAY",
-                        "description": "List of daily itinerary objects",
                         "items": {
                             "type": "OBJECT",
                             "properties": {
-                                "day": {"type": "INTEGER", "description": "Day index e.g. 1, 2, 3"},
-                                "title": {"type": "STRING", "description": "Day theme"},
-                                "activities": {"type": "STRING", "description": "Detailed morning, afternoon, evening plan"}
+                                "day": {"type": "INTEGER"},
+                                "title": {"type": "STRING"},
+                                "activities": {"type": "STRING"}
                             },
                             "required": ["day", "title", "activities"]
                         }
@@ -254,12 +430,10 @@ GEMINI_TOOLS = [{
         },
         {
             "name": "web_search",
-            "description": "Performs live web search for weather, opening hours, local rules, or travel facts.",
+            "description": "Searches the web for travel facts.",
             "parameters": {
                 "type": "OBJECT",
-                "properties": {
-                    "query": {"type": "STRING", "description": "Search query e.g. 'Paris metro ticket price 2026'"}
-                },
+                "properties": {"query": {"type": "STRING"}},
                 "required": ["query"]
             }
         }
@@ -267,346 +441,190 @@ GEMINI_TOOLS = [{
 }]
 
 
-# ---------------- LIVE TRIP CONTEXT INJECTOR ----------------
-def get_live_trip_context(trip_id):
-    if not trip_id:
-        return "No specific trip active."
-        
+def get_live_trip_context(trip_id, user_id):
     conn = get_db()
-    trip = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
-    if not trip:
+    try:
+        trip = get_trip_for_member(conn, trip_id, user_id)
+        if not trip:
+            return None
+        total = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE trip_id = ?",
+            (trip_id,)
+        ).fetchone()["total"]
+        recent = conn.execute(
+            "SELECT description, amount FROM expenses WHERE trip_id = ? ORDER BY id DESC LIMIT 5",
+            (trip_id,)
+        ).fetchall()
+        itinerary = conn.execute(
+            "SELECT day_number, title FROM itineraries WHERE trip_id = ? ORDER BY day_number",
+            (trip_id,)
+        ).fetchall()
+        return (
+            f"Trip: {trip['trip_name']}; destination: {trip['destination'] or 'Not specified'}; "
+            f"budget: ₹{trip['budget'] or 0}; total expenses: ₹{total}; "
+            f"recent expenses: {[dict(r) for r in recent]}; "
+            f"itinerary: {[dict(r) for r in itinerary]}"
+        )
+    finally:
         conn.close()
-        return "Trip not found."
-
-    spent_row = conn.execute("SELECT SUM(amount) as total FROM expenses WHERE trip_id = ?", (trip_id,)).fetchone()
-    total_spent = spent_row['total'] if spent_row and spent_row['total'] else 0.0
-    
-    recent_exp = conn.execute("SELECT description, amount FROM expenses WHERE trip_id = ? ORDER BY id DESC LIMIT 5", (trip_id,)).fetchall()
-    exp_str = ", ".join([f"{r['description']} (₹{r['amount']})" for r in recent_exp]) if recent_exp else "None"
-
-    itinerary = conn.execute("SELECT day_number, title FROM itineraries WHERE trip_id = ? ORDER BY day_number ASC", (trip_id,)).fetchall()
-    itin_str = ", ".join([f"Day {r['day_number']}: {r['title']}" for r in itinerary]) if itinerary else "None"
-
-    conn.close()
-
-    return f"""
-    [ACTIVE TRIP DB CONTEXT]
-    - Trip Title: {trip['title']}
-    - Destination: {trip['destination']}
-    - Total Budget: ₹{trip['budget']}
-    - Total Logged Expenses: ₹{total_spent}
-    - Recent Expenses: {exp_str}
-    - Active Itinerary: {itin_str}
-    """
 
 
-# ---------------- AGENTIC AI ENDPOINT ----------------
-@app.route('/api/agent', methods=['POST'])
+@app.route("/api/agent", methods=["POST"])
 def agentic_ai():
     if "user_id" not in session:
-        return jsonify({"reply": "Please login to access AI Agent."}), 401
+        return jsonify({"reply": "Please log in to access the AI Agent."}), 401
 
-    data = request.get_json() or {}
-    user_prompt = data.get("prompt", "").strip()
+    data = request.get_json(silent=True) or {}
+    prompt = str(data.get("prompt", "")).strip()
     trip_id = data.get("trip_id")
+    if not prompt or not trip_id:
+        return jsonify({"reply": "A prompt and trip ID are required."}), 400
 
-    if not user_prompt or not trip_id:
-        return jsonify({"reply": "User prompt and valid Trip ID are required!"})
+    try:
+        trip_id = int(trip_id)
+    except (TypeError, ValueError):
+        return jsonify({"reply": "Invalid trip ID."}), 400
 
-    db_context = get_live_trip_context(trip_id)
+    context = get_live_trip_context(trip_id, session["user_id"])
+    if context is None:
+        return jsonify({"reply": "Trip not found or access denied."}), 403
 
-    system_instruction = f"""
-    You are 'Bharatyatra Agentic AI', an autonomous, real-time international travel assistant.
-    
-    OPERATIONAL RULES:
-    1. Answer queries accurately using [ACTIVE TRIP DB CONTEXT].
-    2. Execute 'add_expense' when asked to log purchases or expenses.
-    3. Execute 'create_travel_roadmap' when asked to build or save day-wise trip itineraries.
-    4. Execute 'web_search' when asked for live weather, museum opening hours, flight status, or real-world facts.
-    5. Always be concise, polite, clear, and direct.
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return jsonify({"reply": "AI is not configured yet. Set the GEMINI_API_KEY environment variable."}), 503
 
-    {db_context}
-    """
-
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-
+    endpoint = (
+        "https://generativelanguage.googleapis.com/v1beta/"
+        "models/gemini-2.5-flash:generateContent"
+    )
+    url = f"{endpoint}?key={api_key}"
+    system_instruction = (
+        "You are Bharatyatra AI, a travel assistant. Use the active trip context "
+        "when answering. Call add_expense only when the user explicitly asks to log "
+        "an expense; call create_travel_roadmap only when asked to save an itinerary; "
+        "use web_search for live travel facts. Be concise.\n\n" + context
+    )
     payload = {
-        "contents": [
-            {"role": "user", "parts": [{"text": f"{system_instruction}\n\nUser Request: {user_prompt}"}]}
-        ],
+        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "tools": GEMINI_TOOLS
     }
 
     try:
-        res = requests.post(url, json=payload, timeout=12).json()
-        
-        if 'candidates' not in res or not res['candidates']:
-            return jsonify({"reply": "API Response error. Verify your GEMINI_API_KEY."})
+        response = requests.post(url, json=payload, timeout=20)
+        response.raise_for_status()
+        result = response.json()
+        parts = result.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        function_part = next((part for part in parts if "functionCall" in part), None)
+        if not function_part:
+            answer = "".join(part.get("text", "") for part in parts).strip()
+            return jsonify({"reply": answer or "The AI did not return a response."})
 
-        candidate = res['candidates'][0]['content']['parts'][0]
-
-        # Check if Gemini triggered a Tool
-        if "functionCall" in candidate:
-            call = candidate["functionCall"]
-            fn_name = call["name"]
-            args = call.get("args", {})
-
-            # Local Tool Execution
-            tool_result = {}
-            if fn_name == "add_expense":
-                tool_result = tool_add_expense(
-                    trip_id=trip_id,
-                    user_id=session["user_id"],
-                    description=args.get("description", "Expense"),
-                    amount=args.get("amount", 0),
-                    currency=args.get("currency", "INR")
-                )
-            elif fn_name == "get_trip_summary":
-                tool_result = tool_get_trip_summary(trip_id)
-            elif fn_name == "create_travel_roadmap":
-                tool_result = tool_create_roadmap(
-                    trip_id=trip_id,
-                    user_id=session["user_id"],
-                    days_plan=args.get("days_plan", [])
-                )
-            elif fn_name == "web_search":
-                tool_result = tool_web_search(query=args.get("query", ""))
-
-            # Pass Tool Execution Result back to Gemini
-            second_payload = {
-                "contents": [
-                    {"role": "user", "parts": [{"text": f"{system_instruction}\n\nUser Request: {user_prompt}"}]},
-                    {"role": "model", "parts": [{"functionCall": call}]},
-                    {
-                        "role": "function",
-                        "parts": [{
-                            "functionResponse": {
-                                "name": fn_name,
-                                "response": tool_result
-                            }
-                        }]
-                    }
-                ],
-                "tools": GEMINI_TOOLS
-            }
-
-            second_res = requests.post(url, json=second_payload, timeout=12).json()
-            final_reply = second_res['candidates'][0]['content']['parts'][0]['text']
-            return jsonify({"reply": final_reply, "tool_executed": fn_name})
-
+        call = function_part["functionCall"]
+        name = call.get("name")
+        args = call.get("args", {})
+        if name == "add_expense":
+            tool_result = tool_add_expense(
+                trip_id, session["user_id"], args.get("description", "Expense"),
+                args.get("amount", 0), args.get("currency", "INR")
+            )
+        elif name == "get_trip_summary":
+            tool_result = tool_get_trip_summary(trip_id, session["user_id"])
+        elif name == "create_travel_roadmap":
+            tool_result = tool_create_roadmap(trip_id, session["user_id"], args.get("days_plan", []))
+        elif name == "web_search":
+            tool_result = tool_web_search(args.get("query", ""))
         else:
-            return jsonify({"reply": candidate['text']})
+            return jsonify({"reply": "The AI requested an unsupported tool."}), 502
 
-    except Exception as e:
-        print(f"Agent Execution Failure: {e}")
-        return jsonify({"reply": "Agent failed to respond due to network/API error."})
-
-
-# ---------------- REGULAR ROUTES ----------------
-@app.route('/')
-def index():
-    # Demo Auto-Login
-    session["user_id"] = 1
-    conn = get_db()
-    
-    # Ensure Default User & Trip Exist
-    user = conn.execute("SELECT * FROM users WHERE id=1").fetchone()
-    if not user:
-        conn.execute("INSERT INTO users (id, name, email) VALUES (1, 'Sharma', 'sharma@example.com')")
-        
-    trip = conn.execute("SELECT * FROM trips WHERE id=1").fetchone()
-    if not trip:
-        conn.execute("INSERT INTO trips (id, user_id, title, destination, budget) VALUES (1, 1, 'Euro Trip 2026', 'Paris, France', 150000.0)")
-        
-    conn.commit()
-    conn.close()
-    return redirect(url_for('view_trip', trip_id=1))
-
-@app.route('/trip/<int:trip_id>')
-def view_trip(trip_id):
-    conn = get_db()
-    trip = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
-    expenses = conn.execute("SELECT * FROM expenses WHERE trip_id = ? ORDER BY id DESC", (trip_id,)).fetchall()
-    itineraries = conn.execute("SELECT * FROM itineraries WHERE trip_id = ? ORDER BY day_number ASC", (trip_id,)).fetchall()
-    spent_row = conn.execute("SELECT SUM(amount) as total FROM expenses WHERE trip_id = ?", (trip_id,)).fetchone()
-    conn.close()
-    
-    total_spent = spent_row['total'] if spent_row and spent_row['total'] else 0.0
-    return render_template('trip_detail.html', trip=trip, expenses=expenses, itineraries=itineraries, total_spent=total_spent)
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-
-# ---------------- DATABASE HELPERS ----------------
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE) 
-    conn.row_factory = sqlite3.Row 
-    return conn
-
-def get_db():
-    conn = sqlite3.connect(DATABASE, timeout=20)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL;')
-    return conn
-
-def create_tables():
-    conn = get_db()
-    
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS trips (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trip_name TEXT NOT NULL,
-            trip_code TEXT UNIQUE NOT NULL,
-            creator_id INTEGER NOT NULL,
-            FOREIGN KEY (creator_id) REFERENCES users(id)
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS trip_members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trip_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            UNIQUE(trip_id, user_id),
-            FOREIGN KEY (trip_id) REFERENCES trips(id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trip_id INTEGER NOT NULL,
-            payer_id INTEGER NOT NULL,
-            amount REAL NOT NULL,
-            description TEXT NOT NULL,
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (trip_id) REFERENCES trips(id),
-            FOREIGN KEY (payer_id) REFERENCES users(id)
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS photos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trip_id INTEGER NOT NULL,
-            uploader_id INTEGER NOT NULL,
-            filename TEXT NOT NULL,
-            upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (trip_id) REFERENCES trips(id),
-            FOREIGN KEY (uploader_id) REFERENCES users(id)
-        )
-    """)
-    
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS crowd_reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            location_name TEXT NOT NULL,
-            crowd_level INTEGER NOT NULL,
-            report_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            description TEXT NOT NULL,
-            amount TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
+        second_payload = {
+            "systemInstruction": {"parts": [{"text": system_instruction}]},
+            "contents": [
+                {"role": "user", "parts": [{"text": prompt}]},
+                {"role": "model", "parts": [{"functionCall": call}]},
+                {"role": "user", "parts": [{
+                    "text": "Tool result (JSON): " + json.dumps(tool_result, ensure_ascii=False)
+                }]}
+            ]
+        }
+        second_response = requests.post(url, json=second_payload, timeout=20)
+        second_response.raise_for_status()
+        second_data = second_response.json()
+        final_parts = second_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        final_text = "".join(p.get("text", "") for p in final_parts).strip()
+        return jsonify({"reply": final_text or tool_result.get("message", "Tool completed."),
+                        "tool_executed": name, "tool_result": tool_result})
+    except (requests.RequestException, ValueError, KeyError, IndexError) as exc:
+        app.logger.exception("AI agent request failed: %s", exc)
+        return jsonify({"reply": "AI request failed. Check your API key, internet connection, and server log."}), 502
 
 
-
-FX_CACHE = {}
-
-def get_exchange_rate(from_curr, to_curr="INR"):
-    if from_curr == to_curr:
-        return 1.0
-    cache_key = f"{from_curr}_{to_curr}"
-    if cache_key in FX_CACHE:
-        return FX_CACHE[cache_key]
-    try:
-        url = f"https://open.er-api.com/v6/latest/{from_curr}"
-        res = requests.get(url, timeout=3).json()
-        if res.get("result") == "success":
-            rate = res["rates"].get(to_curr, 1.0)
-            FX_CACHE[cache_key] = rate
-            return rate
-    except Exception as e:
-        print(f"FX API Error: {e}")
-    
-    fallback = {"USD": 83.5, "EUR": 90.2, "AED": 22.7, "GBP": 105.0, "CAD": 61.5, "INR": 1.0}
-    return round(fallback.get(from_curr, 1.0) / fallback.get(to_curr, 1.0), 4)
-
-
-# ---------------- HOME & AUTH ----------------
+# ---------------------------------------------------------------------------
+# HOME AND AUTHENTICATION
+# ---------------------------------------------------------------------------
 @app.route("/")
 def home():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
     return render_template("index.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
         return render_template("register.html")
 
-    name = request.form.get("name")
-    email = request.form.get("email")
-    password = request.form.get("password")
-
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
     if not name or not email or not password:
-        return "All fields are required!"
+        flash("All fields are required.", "error")
+        return redirect(url_for("register"))
+    if len(password) < 8:
+        flash("Password must be at least 8 characters.", "error")
+        return redirect(url_for("register"))
 
-    hashed_password = generate_password_hash(password)
-
+    conn = get_db()
     try:
-        conn = get_db()
-        conn.execute("""
-            INSERT INTO users (name, email, password)
-            VALUES (?, ?, ?)
-        """, (name, email, hashed_password))
+        conn.execute(
+            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+            (name[:100], email[:254], generate_password_hash(password))
+        )
         conn.commit()
-        conn.close()
+        flash("Registration successful. Please log in.", "success")
         return redirect(url_for("login"))
     except sqlite3.IntegrityError:
-        return "Email already registered!"
+        flash("That email is already registered.", "error")
+        return redirect(url_for("register"))
+    finally:
+        conn.close()
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
         return render_template("login.html")
 
-    email = request.form.get("email")
-    password = request.form.get("password")
-
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-    conn.close()
+    try:
+        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    finally:
+        conn.close()
 
-    if not user:
-        return "Error: This Email is NOT registered!"
+    if not user or not user["password"]:
+        flash("Email is not registered or the account needs a password reset.", "error")
+        return redirect(url_for("login"))
+    if not check_password_hash(user["password"], password):
+        flash("Incorrect email or password.", "error")
+        return redirect(url_for("login"))
 
-    if check_password_hash(user["password"], password):
-        session["user_id"] = user["id"]
-        session["user_name"] = user["name"]
-        return redirect(url_for("dashboard"))
-    else:
-        return "Error: Wrong Password!"
+    session.clear()
+    session["user_id"] = user["id"]
+    session["user_name"] = user["name"]
+    return redirect(url_for("dashboard"))
+
 
 @app.route("/logout")
 def logout():
@@ -614,608 +632,586 @@ def logout():
     return redirect(url_for("home"))
 
 
-# ---------------- DASHBOARD & TRIPS ----------------
+# ---------------------------------------------------------------------------
+# DASHBOARD AND TRIPS
+# ---------------------------------------------------------------------------
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
-
     conn = get_db()
-    trips = conn.execute("""
-        SELECT trips.*
-        FROM trips
-        JOIN trip_members ON trips.id = trip_members.trip_id
-        WHERE trip_members.user_id = ?
-    """, (session["user_id"],)).fetchall()
-    conn.close()
+    try:
+        trips = conn.execute("""
+            SELECT t.*
+            FROM trips t
+            JOIN trip_members tm ON t.id = tm.trip_id
+            WHERE tm.user_id = ?
+            ORDER BY t.id DESC
+        """, (session["user_id"],)).fetchall()
+    finally:
+        conn.close()
+    return render_template("dashboard.html", name=session.get("user_name", "Traveler"), trips=trips)
 
-    return render_template("dashboard.html", name=session["user_name"], trips=trips)
 
 @app.route("/create-trip", methods=["POST"])
 def create_trip():
     if "user_id" not in session:
         return redirect(url_for("login"))
-
-    trip_name = request.form.get("trip_name")
+    trip_name = request.form.get("trip_name", "").strip()
     if not trip_name:
-        return "Trip name is required!"
-
-    characters = string.ascii_uppercase + string.digits
-    while True:
-        trip_code = "".join(secrets.choice(characters) for _ in range(6))
-        conn = get_db()
-        existing = conn.execute("SELECT id FROM trips WHERE trip_code = ?", (trip_code,)).fetchone()
-        conn.close()
-        if not existing:
-            break
+        flash("Trip name is required.", "error")
+        return redirect(url_for("dashboard"))
 
     conn = get_db()
-    cursor = conn.execute("""
-        INSERT INTO trips (trip_name, trip_code, creator_id)
-        VALUES (?, ?, ?)
-    """, (trip_name, trip_code, session["user_id"]))
-    
-    trip_id = cursor.lastrowid
+    try:
+        trip_code = None
+        for _ in range(20):
+            candidate = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+            if not conn.execute("SELECT 1 FROM trips WHERE trip_code = ?", (candidate,)).fetchone():
+                trip_code = candidate
+                break
+        if not trip_code:
+            flash("Could not generate a trip code. Please try again.", "error")
+            return redirect(url_for("dashboard"))
 
-    conn.execute("""
-        INSERT INTO trip_members (trip_id, user_id)
-        VALUES (?, ?)
-    """, (trip_id, session["user_id"]))
+        cursor = conn.execute("""
+            INSERT INTO trips (trip_name, trip_code, creator_id, user_id, title, destination, budget)
+            VALUES (?, ?, ?, ?, ?, 'Not specified', 0)
+        """, (trip_name[:120], trip_code, session["user_id"], session["user_id"], trip_name[:120]))
+        trip_id = cursor.lastrowid
+        conn.execute("INSERT OR IGNORE INTO trip_members (trip_id, user_id) VALUES (?, ?)",
+                     (trip_id, session["user_id"]))
+        add_history(conn, session["user_id"], "Trip Created", f"Created trip: {trip_name}", "Free")
+        conn.commit()
+        flash(f"Trip created. Share code: {trip_code}", "success")
+        return redirect(url_for("view_trip", trip_id=trip_id))
+    finally:
+        conn.close()
 
-    # Add activity in history
-    conn.execute("""
-        INSERT INTO history (user_id, title, description, amount)
-        VALUES (?, ?, ?, ?)
-    """, (session["user_id"], "Trip Created", f"Created trip: {trip_name}", "Free"))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("dashboard"))
 
 @app.route("/join-trip", methods=["POST"])
 def join_trip():
     if "user_id" not in session:
         return redirect(url_for("login"))
-
-    trip_code = request.form.get("trip_code")
+    trip_code = request.form.get("trip_code", "").strip().upper()
     if not trip_code:
-        return "Trip code is required!"
-
-    trip_code = trip_code.upper()
-    conn = get_db()
-    trip = conn.execute("SELECT * FROM trips WHERE trip_code = ?", (trip_code,)).fetchone()
-
-    if not trip:
-        conn.close()
-        return "Invalid Trip Code!"
-
-    try:
-        conn.execute("""
-            INSERT INTO trip_members (trip_id, user_id)
-            VALUES (?, ?)
-        """, (trip["id"], session["user_id"]))
-        
-        conn.execute("""
-            INSERT INTO history (user_id, title, description, amount)
-            VALUES (?, ?, ?, ?)
-        """, (session["user_id"], "Joined Trip", f"Joined trip ID: {trip['id']}", "Free"))
-
-        conn.commit()
-        conn.close()
+        flash("Trip code is required.", "error")
         return redirect(url_for("dashboard"))
-    except sqlite3.IntegrityError:
+
+    conn = get_db()
+    try:
+        trip = conn.execute("SELECT * FROM trips WHERE trip_code = ?", (trip_code,)).fetchone()
+        if not trip:
+            flash("Invalid trip code.", "error")
+            return redirect(url_for("dashboard"))
+        existing = conn.execute(
+            "SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?",
+            (trip["id"], session["user_id"])
+        ).fetchone()
+        if existing:
+            flash("You are already a member of this trip.", "info")
+        else:
+            conn.execute("INSERT INTO trip_members (trip_id, user_id) VALUES (?, ?)",
+                         (trip["id"], session["user_id"]))
+            add_history(conn, session["user_id"], "Joined Trip", f"Joined trip: {trip['trip_name']}", "Free")
+            conn.commit()
+            flash("You joined the trip.", "success")
+        return redirect(url_for("view_trip", trip_id=trip["id"]))
+    finally:
         conn.close()
-        return "You are already a member of this trip!"
+
 
 @app.route("/trip/<int:trip_id>")
 def view_trip(trip_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
-
     conn = get_db()
-    is_member = conn.execute("""
-        SELECT * FROM trip_members WHERE trip_id = ? AND user_id = ?
-    """, (trip_id, session["user_id"])).fetchone()
+    try:
+        trip = get_trip_for_member(conn, trip_id, session["user_id"])
+        if not trip:
+            flash("Trip not found or you are not a member.", "error")
+            return redirect(url_for("dashboard"))
 
-    if not is_member:
+        members = conn.execute("""
+            SELECT u.id, u.name, u.email
+            FROM users u JOIN trip_members tm ON u.id = tm.user_id
+            WHERE tm.trip_id = ? ORDER BY u.name
+        """, (trip_id,)).fetchall()
+        expenses = conn.execute("""
+            SELECT e.id, e.amount, e.description,
+                   COALESCE(e.date, CURRENT_TIMESTAMP) AS date, e.payer_id,
+                   u.name AS payer_name
+            FROM expenses e JOIN users u ON e.payer_id = u.id
+            WHERE e.trip_id = ? ORDER BY e.date DESC, e.id DESC
+        """, (trip_id,)).fetchall()
+        total_expense = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE trip_id = ?",
+            (trip_id,)
+        ).fetchone()["total"]
+        photos = conn.execute("""
+            SELECT p.filename, p.uploader_id, p.upload_date, u.name AS uploader_name
+            FROM photos p JOIN users u ON p.uploader_id = u.id
+            WHERE p.trip_id = ? ORDER BY p.upload_date DESC
+        """, (trip_id,)).fetchall()
+        itineraries = conn.execute(
+            "SELECT * FROM itineraries WHERE trip_id = ? ORDER BY day_number", (trip_id,)
+        ).fetchall()
+    finally:
         conn.close()
-        return "Access Denied: You are not a member of this trip!"
 
-    trip = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
-    
-    members = conn.execute("""
-        SELECT users.id, users.name, users.email 
-        FROM users
-        JOIN trip_members ON users.id = trip_members.user_id
-        WHERE trip_members.trip_id = ?
-    """, (trip_id,)).fetchall()
-
-    expenses = conn.execute("""
-        SELECT expenses.amount, expenses.description, expenses.date, users.name as payer_name
-        FROM expenses
-        JOIN users ON expenses.payer_id = users.id
-        WHERE expenses.trip_id = ?
-        ORDER BY expenses.date DESC
-    """, (trip_id,)).fetchall()
-
-    total_expense = conn.execute("""
-        SELECT SUM(amount) as total FROM expenses WHERE trip_id = ?
-    """, (trip_id,)).fetchone()["total"]
-
-    photos = conn.execute("""
-        SELECT photos.filename, photos.uploader_id, users.name as uploader_name
-        FROM photos
-        JOIN users ON photos.uploader_id = users.id
-        WHERE photos.trip_id = ?
-        ORDER BY photos.upload_date DESC
-    """, (trip_id,)).fetchall()
-
-    conn.close()
-
+    # Both aliases are provided to keep older and newer templates working.
+    trip_data = dict(trip)
+    trip_data["name"] = trip_data.get("trip_name") or trip_data.get("title") or f"Trip {trip_id}"
+    trip_data["code"] = trip_data.get("trip_code") or ""
     return render_template(
-        "trip_detail.html", 
-        trip=trip, 
-        members=members, 
-        expenses=expenses, 
-        total_expense=total_expense or 0,
-        photos=photos
+        "trip_detail.html", trip=trip_data, members=members, expenses=expenses,
+        total_expense=total_expense, total_spent=total_expense, photos=photos,
+        itineraries=itineraries
     )
 
 
-# ---------------- EXPENSES & HISTORY ----------------
+# ---------------------------------------------------------------------------
+# EXPENSES AND HISTORY
+# ---------------------------------------------------------------------------
 @app.route("/add-expense/<int:trip_id>", methods=["POST"])
 def add_expense(trip_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    amount_raw = request.form.get("amount")
-    description = request.form.get("description")
-    currency = request.form.get("currency", "INR") # Naya Multi-Currency Dropdown field
+    description = request.form.get("description", "").strip()
+    amount_raw = request.form.get("amount", "").strip()
+    currency = request.form.get("currency", "INR").upper().strip()
+    if not description or not amount_raw:
+        flash("Amount and description are required.", "error")
+        return redirect(url_for("view_trip", trip_id=trip_id))
+    try:
+        amount = float(amount_raw)
+        if amount <= 0 or amount > 100000000:
+            raise ValueError("Amount must be greater than zero and within the allowed limit.")
+        rate = get_exchange_rate(currency, "INR")
+    except (ValueError, TypeError) as exc:
+        flash(str(exc) or "Invalid amount or currency.", "error")
+        return redirect(url_for("view_trip", trip_id=trip_id))
 
-    if not amount_raw or not description:
-        return "Amount and description are required!"
-
-    # 1. Real-time FX Conversion into INR
-    raw_float = float(amount_raw)
-    rate = get_exchange_rate(currency, "INR")
-    converted_inr = round(raw_float * rate, 2)
-
-    # 2. Description Format (Agar currency INR na ho)
-    if currency != "INR":
-        full_description = f"{description} ({raw_float} {currency})"
-        history_amount = f"₹{converted_inr} ({raw_float} {currency})"
-    else:
-        full_description = description
-        history_amount = f"₹{converted_inr}"
+    converted = round(amount * rate, 2)
+    full_description = f"{description[:180]} ({amount:g} {currency})" if currency != "INR" else description[:200]
+    history_amount = f"₹{converted:.2f}" if currency == "INR" else f"₹{converted:.2f} ({amount:g} {currency})"
 
     conn = get_db()
-    
-    # 3. Insert into expenses (INR Amount & Description)
-    conn.execute("""
-        INSERT INTO expenses (trip_id, payer_id, amount, description)
-        VALUES (?, ?, ?, ?)
-    """, (trip_id, session["user_id"], converted_inr, full_description))
-    
-    # 4. Insert into history table
-    conn.execute("""
-        INSERT INTO history (user_id, title, description, amount)
-        VALUES (?, ?, ?, ?)
-    """, (session["user_id"], "Expense Added", full_description, history_amount))
-
-    conn.commit()
-    conn.close()
-
+    try:
+        if not get_trip_for_member(conn, trip_id, session["user_id"]):
+            flash("Trip not found or access denied.", "error")
+            return redirect(url_for("dashboard"))
+        conn.execute("""
+            INSERT INTO expenses (trip_id, payer_id, amount, description, date)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (trip_id, session["user_id"], converted, full_description))
+        add_history(conn, session["user_id"], "Expense Added", full_description, history_amount)
+        conn.commit()
+        flash("Expense added successfully.", "success")
+    finally:
+        conn.close()
     return redirect(url_for("view_trip", trip_id=trip_id))
 
-@app.route('/history')
+
+@app.route("/history")
 def history():
     if "user_id" not in session:
         return redirect(url_for("login"))
-        
-    user_id = session.get('user_id')  
-    
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM history WHERE user_id = ? ORDER BY timestamp DESC", (user_id,))
-    user_history = cursor.fetchall()
-    conn.close()
-    
-    return render_template('history.html', history_items=user_history)
+    try:
+        history_items = conn.execute(
+            "SELECT * FROM history WHERE user_id = ? ORDER BY timestamp DESC, id DESC",
+            (session["user_id"],)
+        ).fetchall()
+    finally:
+        conn.close()
+    return render_template("history.html", history_items=history_items)
 
 
-# ---------------- REAL-TIME USABLE ICON PAGES (BALANCE, PAY, WEALTH) ----------------
-# ---------------- BALANCE & SETTLEMENTS ----------------
-@app.route('/balance')
+# ---------------------------------------------------------------------------
+# BALANCE, QUICK PAY LOG, AND WEALTH SUMMARY
+# ---------------------------------------------------------------------------
+@app.route("/balance")
 def balance():
     if "user_id" not in session:
         return redirect(url_for("login"))
-        
     user_id = session["user_id"]
     conn = get_db()
-    
-    # 1. User ki saari trips fetch karein jisme wo member hai
-    user_trips = conn.execute("""
-        SELECT trips.id, trips.trip_name 
-        FROM trips
-        JOIN trip_members ON trips.id = trip_members.trip_id
-        WHERE trip_members.user_id = ?
-    """, (user_id,)).fetchall()
-    
-    trip_balances = []
-    total_overall_paid = 0
-    
-    for trip in user_trips:
-        trip_id = trip['id']
-        
-        # Is trip ka total kharcha
-        trip_total = conn.execute("""
-            SELECT SUM(amount) as total FROM expenses WHERE trip_id = ?
-        """, (trip_id,)).fetchone()["total"] or 0
-        
-        # Is trip ke total members
-        member_count = conn.execute("""
-            SELECT COUNT(*) as cnt FROM trip_members WHERE trip_id = ?
-        """, (trip_id,)).fetchone()["cnt"] or 1
-        
-        # User ne is trip me kitna pay kiya
-        user_paid = conn.execute("""
-            SELECT SUM(amount) as total FROM expenses WHERE trip_id = ? AND payer_id = ?
-        """, (trip_id, user_id)).fetchone()["total"] or 0
-        
-        total_overall_paid += user_paid
-        
-        # Fair share per person (Equal split logic)
-        fair_share = trip_total / member_count if member_count > 0 else 0
-        balance_amount = user_paid - fair_share
-        
-        trip_balances.append({
-            "trip_name": trip["trip_name"],
-            "trip_id": trip_id,
-            "trip_total": trip_total,
-            "user_paid": user_paid,
-            "fair_share": fair_share,
-            "balance_amount": balance_amount # Positive matlab lena hai, Negative matlab Dena hai
-        })
-        
-    conn.close()
-    
-    return render_template('balance.html', trip_balances=trip_balances, total_overall_paid=total_overall_paid)
+    try:
+        trips = conn.execute("""
+            SELECT t.id, t.trip_name FROM trips t
+            JOIN trip_members tm ON tm.trip_id = t.id
+            WHERE tm.user_id = ? ORDER BY t.trip_name
+        """, (user_id,)).fetchall()
+        trip_balances = []
+        total_overall_paid = 0.0
+        for trip in trips:
+            trip_id = trip["id"]
+            total = conn.execute(
+                "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE trip_id = ?",
+                (trip_id,)
+            ).fetchone()["total"]
+            member_count = conn.execute(
+                "SELECT COUNT(*) AS cnt FROM trip_members WHERE trip_id = ?", (trip_id,)
+            ).fetchone()["cnt"] or 1
+            paid = conn.execute("""
+                SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
+                WHERE trip_id = ? AND payer_id = ?
+            """, (trip_id, user_id)).fetchone()["total"]
+            total_overall_paid += paid
+            trip_balances.append({
+                "trip_name": trip["trip_name"], "trip_id": trip_id,
+                "trip_total": total, "user_paid": paid,
+                "fair_share": total / member_count,
+                "balance_amount": paid - (total / member_count)
+            })
+    finally:
+        conn.close()
+    return render_template("balance.html", trip_balances=trip_balances,
+                           total_overall_paid=total_overall_paid)
 
-# ---------------- PAY & SETTLEMENT ROUTE ----------------
-@app.route('/pay', methods=['GET', 'POST'])
+
+@app.route("/pay", methods=["GET", "POST"])
 def pay():
     if "user_id" not in session:
         return redirect(url_for("login"))
-        
     user_id = session["user_id"]
-    conn = get_db()
-    
-    if request.method == 'POST':
-        upi_id = request.form.get('upi_id')
-        amount = request.form.get('amount')
-        note = request.form.get('note', 'Quick Payment')
-        
+    if request.method == "POST":
+        upi_id = request.form.get("upi_id", "").strip()
+        note = request.form.get("note", "Quick Payment").strip() or "Quick Payment"
+        amount_raw = request.form.get("amount", "").strip()
         try:
-            amount_val = float(amount)
-            # History ya transaction table me entry save karein
-            conn.execute("""
-                INSERT INTO history (user_id, title, description, amount, timestamp)
-                VALUES (?, ?, ?, ?, DATETIME('now', 'localtime'))
-            """, (user_id, f"Paid to {upi_id}", note, f"₹{amount_val}"))
-            conn.commit()
-            flash("Payment Successful!", "success")
-        except Exception as e:
-            flash("Payment Failed! Please check details.", "error")
-            
-        conn.close()
-        return redirect(url_for('pay'))
-        
-    # User ki trips fetch karein jahan wo quick pay kar sake
-    user_trips = conn.execute("""
-        SELECT trips.id, trips.trip_name 
-        FROM trips
-        JOIN trip_members ON trips.id = trip_members.trip_id
-        WHERE trip_members.user_id = ?
-    """, (user_id,)).fetchall()
-    
-    conn.close()
-    return render_template('pay.html', user_trips=user_trips)
+            amount = float(amount_raw)
+            if not upi_id or "@" not in upi_id:
+                raise ValueError("Enter a valid-looking UPI ID.")
+            if amount <= 0 or amount > 10000000:
+                raise ValueError("Amount must be greater than zero.")
+        except (ValueError, TypeError) as exc:
+            flash(str(exc) or "Please check payment details.", "error")
+            return redirect(url_for("pay"))
 
-# ---------------- WEALTH & FINANCIAL SUMMARY ----------------
-@app.route('/wealth')
+        # This is a record only. It does not send money or verify UPI payment.
+        conn = get_db()
+        try:
+            add_history(conn, user_id, f"Payment Record for {upi_id}",
+                        f"{note} — payment not processed by this app", f"₹{amount:.2f}")
+            conn.commit()
+        finally:
+            conn.close()
+        flash("Payment record saved only. No money was transferred by this app.", "info")
+        return redirect(url_for("pay"))
+
+    conn = get_db()
+    try:
+        user_trips = conn.execute("""
+            SELECT t.id, t.trip_name FROM trips t
+            JOIN trip_members tm ON tm.trip_id = t.id
+            WHERE tm.user_id = ? ORDER BY t.trip_name
+        """, (user_id,)).fetchall()
+    finally:
+        conn.close()
+    return render_template("pay.html", user_trips=user_trips)
+
+
+@app.route("/wealth")
 def wealth():
     if "user_id" not in session:
         return redirect(url_for("login"))
-        
     user_id = session["user_id"]
     conn = get_db()
-    
-    # 1. Overall total spent by user across all trips
-    overall_spent = conn.execute("""
-        SELECT SUM(amount) as total FROM expenses WHERE payer_id = ?
-    """, (user_id,)).fetchone()["total"] or 0
-    
-    # 2. Total trips joined by user
-    total_trips_joined = conn.execute("""
-        SELECT COUNT(*) as cnt FROM trip_members WHERE user_id = ?
-    """, (user_id,)).fetchone()["cnt"] or 0
-    
-    # 3. Total settlements or payments made
-    total_payments = conn.execute("""
-        SELECT COUNT(*) as cnt FROM history WHERE user_id = ? AND title LIKE '%Payment%'
-    """, (user_id,)).fetchone()["cnt"] or 0
-    
-    # 4. Recent financial history/activity
-    recent_activity = conn.execute("""
-        SELECT title, description, amount, timestamp 
-        FROM history 
-        WHERE user_id = ? 
-        ORDER BY timestamp DESC LIMIT 6
-    """, (user_id,)).fetchall()
-    
-    conn.close()
-    
-    return render_template(
-        'wealth.html', 
-        overall_spent=overall_spent, 
-        total_trips_joined=total_trips_joined, 
-        total_payments=total_payments,
-        recent_activity=recent_activity
-    )
-# ---------------- PHOTO MANAGEMENT ----------------
+    try:
+        overall_spent = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE payer_id = ?",
+            (user_id,)
+        ).fetchone()["total"]
+        total_trips_joined = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM trip_members WHERE user_id = ?", (user_id,)
+        ).fetchone()["cnt"]
+        total_payments = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM history WHERE user_id = ? AND title LIKE '%Payment%'",
+            (user_id,)
+        ).fetchone()["cnt"]
+        recent_activity = conn.execute("""
+            SELECT title, description, amount, timestamp FROM history
+            WHERE user_id = ? ORDER BY timestamp DESC, id DESC LIMIT 6
+        """, (user_id,)).fetchall()
+    finally:
+        conn.close()
+    return render_template("wealth.html", overall_spent=overall_spent,
+                           total_trips_joined=total_trips_joined,
+                           total_payments=total_payments, recent_activity=recent_activity)
+
+
+# ---------------------------------------------------------------------------
+# PHOTO MANAGEMENT
+# ---------------------------------------------------------------------------
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 @app.route("/upload-photo/<int:trip_id>", methods=["POST"])
 def upload_photo(trip_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
+    file = request.files.get("photo")
+    if not file or not file.filename:
+        flash("Choose a photo to upload.", "error")
+        return redirect(url_for("view_trip", trip_id=trip_id))
+    if not allowed_file(file.filename):
+        flash("Allowed photo formats: PNG, JPG, JPEG, GIF, WEBP.", "error")
+        return redirect(url_for("view_trip", trip_id=trip_id))
 
-    if 'photo' not in request.files:
-        return "No file uploaded!"
-
-    file = request.files['photo']
-    if file.filename == '':
-        return "No selected file"
-
-    if file:
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-
-        conn = get_db()
-        conn.execute("""
-            INSERT INTO photos (trip_id, uploader_id, filename)
-            VALUES (?, ?, ?)
-        """, (trip_id, session["user_id"], filename))
-        
-        conn.execute("""
-            INSERT INTO history (user_id, title, description, amount)
-            VALUES (?, ?, ?, ?)
-        """, (session["user_id"], "Photo Uploaded", f"Uploaded {filename}", "Media"))
-
+    conn = get_db()
+    saved_path = None
+    try:
+        if not get_trip_for_member(conn, trip_id, session["user_id"]):
+            flash("Trip not found or access denied.", "error")
+            return redirect(url_for("dashboard"))
+        safe_name = secure_filename(file.filename)
+        unique_name = f"{secrets.token_hex(8)}_{safe_name}"
+        saved_path = UPLOAD_FOLDER / unique_name
+        file.save(saved_path)
+        conn.execute(
+            "INSERT INTO photos (trip_id, uploader_id, filename) VALUES (?, ?, ?)",
+            (trip_id, session["user_id"], unique_name)
+        )
+        add_history(conn, session["user_id"], "Photo Uploaded", f"Uploaded {safe_name}", "Media")
         conn.commit()
+        flash("Photo uploaded.", "success")
+    except Exception:
+        if saved_path and saved_path.exists():
+            saved_path.unlink()
+        app.logger.exception("Photo upload failed")
+        flash("Photo upload failed.", "error")
+    finally:
         conn.close()
-
     return redirect(url_for("view_trip", trip_id=trip_id))
 
-@app.route("/delete-photo/<int:trip_id>/<photo_filename>", methods=["POST"])
+
+@app.route("/delete-photo/<int:trip_id>/<path:photo_filename>", methods=["POST"])
 def delete_photo(trip_id, photo_filename):
     if "user_id" not in session:
         return redirect(url_for("login"))
-
     conn = get_db()
-    photo = conn.execute("""
-        SELECT * FROM photos 
-        WHERE filename = ? AND uploader_id = ? AND trip_id = ?
-    """, (photo_filename, session["user_id"], trip_id)).fetchone()
-
-    if photo:
-        conn.execute("DELETE FROM photos WHERE id = ?", (photo["id"],))
-        conn.commit()
-        
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], photo_filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            
-    conn.close()
+    try:
+        photo = conn.execute("""
+            SELECT * FROM photos WHERE filename = ? AND uploader_id = ? AND trip_id = ?
+        """, (photo_filename, session["user_id"], trip_id)).fetchone()
+        if photo:
+            conn.execute("DELETE FROM photos WHERE id = ?", (photo["id"],))
+            conn.commit()
+            filepath = UPLOAD_FOLDER / photo["filename"]
+            if filepath.exists() and filepath.is_file():
+                filepath.unlink()
+            flash("Photo deleted.", "success")
+        else:
+            flash("Photo not found or you do not have permission to delete it.", "error")
+    finally:
+        conn.close()
     return redirect(url_for("view_trip", trip_id=trip_id))
 
 
-# ---------------- CHATBOT & ANALYTICS APIs ----------------
-@app.route('/api/chat', methods=['POST'])
+# ---------------------------------------------------------------------------
+# CHATBOT, ANALYTICS, AND CROWD APIs
+# ---------------------------------------------------------------------------
+@app.route("/api/chat", methods=["POST"])
 def chat_api():
-    global chat_session 
+    if "user_id" not in session:
+        return jsonify({"error": "Please log in."}), 401
+    data = request.get_json(silent=True) or {}
+    user_message = str(data.get("user_message", "")).strip()
+    trip_id = data.get("trip_id")
+    if not user_message or not trip_id:
+        return jsonify({"error": "Message and trip ID are required."}), 400
     try:
-        data = request.get_json()
-        user_message = data.get("user_message")
-        trip_id = data.get("trip_id")  
+        trip_id = int(trip_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid trip ID."}), 400
 
-        if not user_message:
-            return jsonify({"error": "Message required"}), 400
-
-        conn = get_db()
-        expenses = conn.execute('''
-            SELECT e.description, e.amount, u.name as payer
-            FROM expenses e
-            JOIN users u ON e.payer_id = u.id
-            WHERE e.trip_id = ?
-        ''', (trip_id,)).fetchall()
+    conn = get_db()
+    try:
+        if not get_trip_for_member(conn, trip_id, session["user_id"]):
+            return jsonify({"error": "Trip not found or access denied."}), 403
+        expenses = conn.execute("""
+            SELECT e.description, e.amount, u.name AS payer
+            FROM expenses e JOIN users u ON e.payer_id = u.id
+            WHERE e.trip_id = ? ORDER BY e.id DESC
+        """, (trip_id,)).fetchall()
+        expense_text = "\n".join(
+            f"- {e['payer']} paid ₹{e['amount']:.2f} for {e['description']}"
+            for e in expenses
+        ) or "No expenses logged yet."
+    finally:
         conn.close()
-        
-        expense_text = "Is trip ke saare kharche (Expenses):\n"
-        if expenses:
-            for exp in expenses:
-                expense_text += f"- {exp['payer']} ne ₹{exp['amount']} diye '{exp['description']}' ke liye.\n"
-        else:
-            expense_text += "Abhi tak koi kharcha nahi hua hai.\n"
 
-        ai_prompt = f"""
-        You are a smart financial data analyst for this trip. 
-        Here is the real-time expense data from the database:
-        {expense_text}
-        
-        User's Question: {user_message}
-        
-        Instruction: Answer the user's question accurately based ONLY on the expense data provided above. 
-        Calculate totals or find who paid what if asked. Keep it short, friendly, and in Hinglish or English.
-        """
-
-        if chat_session:
-            response = chat_session.send_message(ai_prompt)
-            return jsonify({"bot_reply": response.text})
-        else:
-            return jsonify({"bot_reply": "AI Chatbot is currently inactive, but your data is safe!"})
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/submit-crowd', methods=['POST'])
-def submit_crowd():
-    data = request.json
-    location = data.get('location').lower()
-    level = data.get('level') 
-    
-    conn = get_db()
-    conn.execute('INSERT INTO crowd_reports (location_name, crowd_level) VALUES (?, ?)', (location, level))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({"status": "success", "message": "Crowd report verified and saved!"})
-
-@app.route('/analytics/<int:trip_id>')
-def analytics(trip_id):
-    return render_template('analytics.html', trip_id=trip_id)
-
-@app.route('/api/real-analytics-data/<int:trip_id>')
-def real_analytics_data(trip_id):
-    conn = get_db()
-    try:
-        cat_data = conn.execute('''
-            SELECT description, SUM(amount) as total 
-            FROM expenses WHERE trip_id = ?
-            GROUP BY description
-        ''', (trip_id,)).fetchall()
-        
+    prompt = (
+        "You are a trip expense assistant. Answer only from this expense data; "
+        "say when the data is insufficient. Keep it concise.\n"
+        f"Expense data:\n{expense_text}\nQuestion: {user_message}"
+    )
+    if chat_session:
         try:
-            member_data = conn.execute('''
-                SELECT u.name as real_name, SUM(e.amount) as total 
-                FROM expenses e
-                JOIN users u ON e.payer_id = u.id
-                WHERE e.trip_id = ?
-                GROUP BY e.payer_id
-            ''', (trip_id,)).fetchall()
-            names_list = [row['real_name'] for row in member_data]
-        except:
-            member_data = conn.execute('SELECT payer_id, SUM(amount) as total FROM expenses WHERE trip_id = ? GROUP BY payer_id', (trip_id,)).fetchall()
-            names_list = [f"User {row['payer_id']}" for row in member_data]
-            
-        amounts_list = [row['total'] for row in member_data]
+            answer = chat_session.send_message(prompt)
+            return jsonify({"bot_reply": answer.text})
+        except Exception:
+            app.logger.exception("Chat session failed")
+    return jsonify({"bot_reply": "AI chatbot is not configured. Your trip data is saved safely."})
 
-        trend_data = conn.execute('''
-            SELECT description, amount FROM expenses 
-            WHERE trip_id = ? ORDER BY id ASC
-        ''', (trip_id,)).fetchall()
 
+@app.route("/analytics/<int:trip_id>")
+def analytics(trip_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    conn = get_db()
+    try:
+        if not get_trip_for_member(conn, trip_id, session["user_id"]):
+            flash("Trip not found or access denied.", "error")
+            return redirect(url_for("dashboard"))
+    finally:
         conn.close()
+    return render_template("analytics.html", trip_id=trip_id)
 
+
+@app.route("/api/real-analytics-data/<int:trip_id>")
+def real_analytics_data(trip_id):
+    if "user_id" not in session:
+        return jsonify({"status": "error", "message": "Please log in."}), 401
+    conn = get_db()
+    try:
+        if not get_trip_for_member(conn, trip_id, session["user_id"]):
+            return jsonify({"status": "error", "message": "Trip not found or access denied."}), 403
+        categories = conn.execute("""
+            SELECT description, SUM(amount) AS total FROM expenses
+            WHERE trip_id = ? GROUP BY description ORDER BY total DESC
+        """, (trip_id,)).fetchall()
+        members = conn.execute("""
+            SELECT u.name AS real_name, SUM(e.amount) AS total
+            FROM expenses e JOIN users u ON e.payer_id = u.id
+            WHERE e.trip_id = ? GROUP BY e.payer_id ORDER BY total DESC
+        """, (trip_id,)).fetchall()
+        trends = conn.execute("""
+            SELECT date, amount FROM expenses WHERE trip_id = ? ORDER BY id ASC
+        """, (trip_id,)).fetchall()
         return jsonify({
             "status": "success",
             "categories": {
-                "labels": [row['description'] for row in cat_data],
-                "values": [row['total'] for row in cat_data]
+                "labels": [r["description"] for r in categories],
+                "values": [r["total"] for r in categories]
             },
             "members": {
-                "names": names_list,
-                "amounts": amounts_list
+                "names": [r["real_name"] for r in members],
+                "amounts": [r["total"] for r in members]
             },
             "daily": {
-                "dates": [row['description'] for row in trend_data],
-                "totals": [row['amount'] for row in trend_data]
+                "dates": [r["date"] or f"Entry {i + 1}" for i, r in enumerate(trends)],
+                "totals": [r["amount"] for r in trends]
             }
         })
-    except Exception as e:
-        if conn:
-            conn.close()
-        return jsonify({"status": "error", "message": str(e)})
+    finally:
+        conn.close()
 
-@app.route('/api/get-crowd/<location_name>', methods=['GET'])
-def get_crowd(location_name):
-    location = location_name.lower()
-    current_hour = datetime.now().hour
-    
-    time_score = 30 
-    if 10 <= current_hour <= 17:
-        time_score = 85 
-    elif 17 < current_hour <= 21:
-        time_score = 95 
-    elif 7 <= current_hour < 10:
-        time_score = 50 
-        
-    weather_multiplier = 1.0 
-    weather_condition = "Clear"
+
+@app.route("/api/submit-crowd", methods=["POST"])
+def submit_crowd():
+    if "user_id" not in session:
+        return jsonify({"status": "error", "message": "Please log in."}), 401
+    data = request.get_json(silent=True) or {}
+    location = str(data.get("location", "")).strip().lower()[:150]
     try:
-        url = f"https://wttr.in/{location}?format=j1"
-        res = requests.get(url, timeout=3).json()
-        current_condition = res['current_condition'][0]['weatherDesc'][0]['value']
-        
-        if any(word in current_condition for word in ['Rain', 'Shower', 'Drizzle', 'Thunder']):
-            weather_multiplier = 0.4  
-            weather_condition = "Raining 🌧️️"
-        elif any(word in current_condition for word in ['Cloud', 'Overcast', 'Fog', 'Mist']):
-            weather_multiplier = 0.9  
-            weather_condition = "Cloudy ☁️"
-        elif any(word in current_condition for word in ['Clear', 'Sunny']):
-            weather_multiplier = 1.1  
-            weather_condition = "Clear & Sunny ☀️"
-        else:
-            weather_condition = current_condition
-    except:
-        weather_condition = "Clear (Default) 🌤️"
-        
+        level = int(data.get("level"))
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "message": "Crowd level must be a number from 0 to 100."}), 400
+    if not location or not 0 <= level <= 100:
+        return jsonify({"status": "error", "message": "Location is required and level must be 0–100."}), 400
     conn = get_db()
-    recent_reports = conn.execute(
-        "SELECT crowd_level FROM crowd_reports WHERE location_name = ? ORDER BY report_time DESC LIMIT 5",
-        (location,)
-    ).fetchall()
-    conn.close()
-    
-    user_score = 0
-    if recent_reports:
-        total = sum(row['crowd_level'] for row in recent_reports)
-        user_score = total / len(recent_reports)
-    else:
-        user_score = time_score 
+    try:
+        conn.execute(
+            "INSERT INTO crowd_reports (location_name, crowd_level) VALUES (?, ?)",
+            (location, level)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"status": "success", "message": "Crowd report saved. It has not been independently verified."})
 
-    base_calc = (time_score * 0.3) + (user_score * 0.7)
-    final_crowd_percentage = int(base_calc * weather_multiplier)
-    final_crowd_percentage = max(10, min(100, final_crowd_percentage))
 
+@app.route("/api/get-crowd/<path:location_name>", methods=["GET"])
+def get_crowd(location_name):
+    location = location_name.strip().lower()[:150]
+    if not location:
+        return jsonify({"error": "Location is required."}), 400
+
+    hour = datetime.now().hour
+    time_score = 30 if hour < 7 else 50 if hour < 10 else 85 if hour <= 17 else 95 if hour <= 21 else 30
+    weather_multiplier = 1.0
+    weather_condition = "Weather unavailable"
+    try:
+        response = requests.get(f"https://wttr.in/{requests.utils.quote(location)}?format=j1", timeout=4)
+        response.raise_for_status()
+        condition = response.json()["current_condition"][0]["weatherDesc"][0]["value"]
+        weather_condition = condition
+        lower = condition.lower()
+        if any(word in lower for word in ("rain", "shower", "drizzle", "thunder")):
+            weather_multiplier = 0.4
+        elif any(word in lower for word in ("cloud", "overcast", "fog", "mist")):
+            weather_multiplier = 0.9
+        elif any(word in lower for word in ("clear", "sunny")):
+            weather_multiplier = 1.1
+    except Exception:
+        pass
+
+    conn = get_db()
+    try:
+        reports = conn.execute("""
+            SELECT crowd_level FROM crowd_reports
+            WHERE location_name = ? ORDER BY report_time DESC LIMIT 5
+        """, (location,)).fetchall()
+    finally:
+        conn.close()
+    user_score = sum(r["crowd_level"] for r in reports) / len(reports) if reports else time_score
+    estimate = max(0, min(100, int(((time_score * 0.3) + (user_score * 0.7)) * weather_multiplier)))
     return jsonify({
         "location": location_name.title(),
-        "crowd_percentage": final_crowd_percentage,
+        "crowd_percentage": estimate,
         "weather": weather_condition,
-        "reports_analyzed": len(recent_reports)
+        "reports_analyzed": len(reports),
+        "note": "Estimate based on recent user reports, time, and available weather data; not an official measurement."
     })
 
-# ---------------- LEAVE / DELETE TRIP ROUTE ----------------
-@app.route('/leave-trip/<int:trip_id>', methods=['GET', 'POST'])
+
+# ---------------------------------------------------------------------------
+# LEAVE TRIP
+# ---------------------------------------------------------------------------
+@app.route("/leave-trip/<int:trip_id>", methods=["POST", "GET"])
 def leave_trip(trip_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
-        
     user_id = session["user_id"]
     conn = get_db()
-    
-    # Trip se member ko remove karein
-    conn.execute("DELETE FROM trip_members WHERE trip_id = ? AND user_id = ?", (trip_id, user_id))
-    conn.execute("DELETE FROM expenses WHERE trip_id = ? AND payer_id = ?", (trip_id, user_id))
-    conn.commit()
-    conn.close()
-    
-    return redirect(url_for('dashboard'))
+    try:
+        membership = conn.execute(
+            "SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?",
+            (trip_id, user_id)
+        ).fetchone()
+        if not membership:
+            flash("You are not a member of this trip.", "error")
+            return redirect(url_for("dashboard"))
+        conn.execute("DELETE FROM trip_members WHERE trip_id = ? AND user_id = ?", (trip_id, user_id))
+        # Keep expense/history records intact so that the trip's shared ledger is not silently changed.
+        add_history(conn, user_id, "Left Trip", f"Left trip ID: {trip_id}", "")
+        conn.commit()
+        flash("You left the trip. Existing expense records were kept.", "info")
+    finally:
+        conn.close()
+    return redirect(url_for("dashboard"))
 
 
-# ---------------- START SERVER ----------------
-if __name__ == '__main__':
-    with app.app_context():
-        create_tables()
+# ---------------------------------------------------------------------------
+# STARTUP
+# ---------------------------------------------------------------------------
+create_tables()
+
+if __name__ == "__main__":
+    # Debug mode is intended only for local development.
     app.run(host='0.0.0.0', port=5000, debug=True)

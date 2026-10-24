@@ -7,3 +7,21 @@ __pycache__/
 *.lnk
 static/uploads/*
 start1/static/uploads/*
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Local databases - do not publish
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# User uploads
+static/uploads/*
+start1/static/uploads/*
